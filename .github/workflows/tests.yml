@@ -1,0 +1,47 @@
+name: tests
+
+on:
+  push:
+    paths:
+      - 'ctransformers/**'
+      - 'tests/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }} ${{ matrix.instructions }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-20.04
+          - macos-latest
+          - windows-latest
+        instructions:
+          - avx2
+          - avx
+          - basic
+        python:
+          - '3.8'
+          - '3.9'
+          - '3.10'
+          - '3.11'
+        exclude:
+          - os: macos-latest
+            instructions: avx2
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install huggingface-hub pytest
+
+      - name: Test
+        run: pytest tests --instructions ${{ matrix.instructions }}
