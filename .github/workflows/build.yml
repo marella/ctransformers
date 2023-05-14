@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'models/**'
+    tags-ignore:
+      - '**'
   workflow_dispatch:
 
 jobs:
