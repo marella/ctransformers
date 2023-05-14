@@ -44,4 +44,4 @@ jobs:
           pip install huggingface-hub pytest
 
       - name: Test
-        run: pytest tests --instructions ${{ matrix.instructions }}
+        run: pytest tests --lib ${{ matrix.instructions }}
