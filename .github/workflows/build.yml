@@ -1,0 +1,64 @@
+name: build
+
+on:
+  push:
+    paths:
+      - 'models/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }} ${{ matrix.instructions }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-20.04
+          - macos-latest
+          - windows-latest
+        instructions:
+          - avx2
+          - avx
+          - basic
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build
+        run: |
+          cmake -S models -B build -DCTRANSFORMERS_INSTRUCTIONS=${{ matrix.instructions }}
+          cmake --build build --config Release
+
+          mkdir tmp
+          mv build/lib tmp/${{ matrix.instructions }}
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: libraries
+          path: tmp
+          if-no-files-found: error
+
+  finish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: libraries
+          path: ctransformers/lib
+
+      - uses: git-actions/set-user@v1
+
+      - name: Save
+        run: |
+          git add ctransformers/lib
+          git commit -m 'Auto Build'
+          git push

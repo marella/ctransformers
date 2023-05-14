@@ -1,0 +1,3 @@
+[submodule "models/ggml"]
+	path = models/ggml
+	url = https://github.com/ggerganov/ggml
