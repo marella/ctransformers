@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -17,7 +18,6 @@ from typing import (
     List,
     Optional,
     Sequence,
-    Union,
 )
 
 from .lib import find_library
@@ -42,6 +42,7 @@ class Config:
 
     # generate
     max_new_tokens: int = 256
+    stop: Optional[Sequence[str]] = None
     reset: bool = True
 
 
@@ -139,7 +140,7 @@ class LLM:
         n_tokens = self.ctransformers_llm_tokenize(text.encode(), tokens)
         return tokens[:n_tokens]
 
-    def detokenize(self, tokens: Union[Sequence[int], int]) -> str:
+    def detokenize(self, tokens: Sequence[int]) -> str:
         if isinstance(tokens, int):
             tokens = [tokens]
         texts = []
@@ -238,6 +239,78 @@ class LLM:
                 break
             yield token
 
+    def _stream(
+        self,
+        prompt: str,
+        *,
+        max_new_tokens: Optional[int] = None,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
+        temperature: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        last_n_tokens: Optional[int] = None,
+        seed: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        threads: Optional[int] = None,
+        stop: Optional[Sequence[str]] = None,
+        reset: Optional[bool] = None,
+    ) -> Generator[str, None, None]:
+        config = self.config
+        max_new_tokens = get(max_new_tokens, config.max_new_tokens)
+        stop = get(stop, config.stop) or []
+        if isinstance(stop, str):
+            stop = [stop]
+
+        tokens = self.tokenize(prompt)
+
+        stop_regex = re.compile('|'.join(map(re.escape, stop)))
+        count = 0
+        text = ''
+        for token in self.generate(
+                tokens,
+                top_k=top_k,
+                top_p=top_p,
+                temperature=temperature,
+                repetition_penalty=repetition_penalty,
+                last_n_tokens=last_n_tokens,
+                seed=seed,
+                batch_size=batch_size,
+                threads=threads,
+                reset=reset,
+        ):
+            text += self.detokenize([token])
+
+            # https://github.com/abetlen/llama-cpp-python/blob/1a13d76c487df1c8560132d10bda62d6e2f4fa93/llama_cpp/llama.py#L686-L706
+            # Check if one of the stop sequences is part of the text.
+            # Note that the stop sequence may not always be at the end of text.
+            if stop:
+                match = stop_regex.search(text)
+                if match:
+                    text = text[:match.start()]
+                    break
+
+            # Avoid sending the longest suffix of text which is also a prefix
+            # of a stop sequence, as it can form a stop sequence with the text
+            # generated later.
+            longest = 0
+            for s in stop:
+                for i in range(len(s), 0, -1):
+                    if text.endswith(s[:i]):
+                        longest = max(i, longest)
+                        break
+
+            end = len(text) - longest
+            if end > 0:
+                yield text[:end]
+                text = text[end:]
+
+            count += 1
+            if count >= max_new_tokens:
+                break
+
+        if text:
+            yield text
+
     def __call__(
         self,
         prompt: str,
@@ -251,30 +324,21 @@ class LLM:
         seed: Optional[int] = None,
         batch_size: Optional[int] = None,
         threads: Optional[int] = None,
+        stop: Optional[Sequence[str]] = None,
         reset: Optional[bool] = None,
     ) -> str:
-        config = self.config
-        max_new_tokens = get(max_new_tokens, config.max_new_tokens)
-
-        tokens = self.tokenize(prompt)
-
-        count = 0
-        response = []
-        for token in self.generate(
-                tokens,
-                batch_size=batch_size,
-                threads=threads,
-                top_k=top_k,
-                top_p=top_p,
-                temperature=temperature,
-                repetition_penalty=repetition_penalty,
-                last_n_tokens=last_n_tokens,
-                seed=seed,
-                reset=reset,
-        ):
-            response.append(token)
-            count += 1
-            if count >= max_new_tokens:
-                break
-
-        return self.detokenize(response)
+        text = self._stream(
+            prompt,
+            max_new_tokens=max_new_tokens,
+            top_k=top_k,
+            top_p=top_p,
+            temperature=temperature,
+            repetition_penalty=repetition_penalty,
+            last_n_tokens=last_n_tokens,
+            seed=seed,
+            batch_size=batch_size,
+            threads=threads,
+            stop=stop,
+            reset=reset,
+        )
+        return ''.join(text)

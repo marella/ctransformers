@@ -5,12 +5,10 @@ except ImportError:
         'To use the ctransformers.langchain module, please install the '
         'langchain package: pip install langchain')
 
-from functools import partial
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional, Sequence
 
 from pydantic import root_validator
 from langchain.callbacks.manager import CallbackManagerForLLMRun
-from langchain.llms.utils import enforce_stop_tokens
 
 from . import AutoModelForCausalLM
 
@@ -51,26 +49,12 @@ class CTransformers(LLM):
     def _call(
         self,
         prompt: str,
-        stop: Optional[List[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
     ) -> str:
-        callback = partial(run_manager.on_llm_new_token,
-                           verbose=self.verbose) if run_manager else None
-        llm = self.client
-
-        tokens = llm.tokenize(prompt)
-        count = 0
         text = []
-        for token in llm.generate(tokens):
-            token = llm.detokenize([token])
-            text.append(token)
-            if callback:
-                callback(token)
-            count += 1
-            if count >= llm.config.max_new_tokens:
-                break
-        text = ''.join(text)
-
-        if stop is not None:
-            text = enforce_stop_tokens(text, stop)
-        return text
+        for chunk in self.client._stream(prompt, stop=stop):
+            text.append(chunk)
+            if run_manager:
+                run_manager.on_llm_new_token(chunk, verbose=self.verbose)
+        return ''.join(text)
