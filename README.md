@@ -180,14 +180,27 @@ print(llm_chain.run('What is AI?'))
 
 ```python
 from_pretrained(
-    model_path_or_repo_id: 'str',
-    model_type: 'Optional[str]' = None,
-    model_file: 'Optional[str]' = None,
-    config: 'Optional[AutoConfig]' = None,
-    lib: 'Optional[str]' = None,
+    model_path_or_repo_id: str,
+    model_type: Optional[str] = None,
+    model_file: Optional[str] = None,
+    config: Optional[ctransformers.hub.AutoConfig] = None,
+    lib: Optional[str] = None,
     **kwargs
 ) → LLM
 ```
+
+Loads the language model from a local file or remote repo.
+
+**Args:**
+
+- <b>`model_path_or_repo_id`</b>: The path to a model file or directory or the name of a Hugging Face Hub model repo.
+- <b>`model_type`</b>: The model type.
+- <b>`model_file`</b>: The name of the model file in repo or directory.
+- <b>`config`</b>: `AutoConfig` object.
+- <b>`lib`</b>: The path to a shared library or one of `avx2`, `avx`, `basic`.
+
+**Returns:**
+`LLM` object.
 
 ### <kbd>class</kbd> `LLM`
 
@@ -202,17 +215,32 @@ __init__(
 )
 ```
 
+Loads the language model from a local file.
+
+**Args:**
+
+- <b>`model_path`</b>: The path to a model file.
+- <b>`model_type`</b>: The model type.
+- <b>`config`</b>: `Config` object.
+- <b>`lib`</b>: The path to a shared library or one of `avx2`, `avx`, `basic`.
+
 ---
 
 ##### <kbd>property</kbd> LLM.config
+
+The config object.
 
 ---
 
 ##### <kbd>property</kbd> LLM.model_path
 
+The path to the model file.
+
 ---
 
 ##### <kbd>property</kbd> LLM.model_type
+
+The model type.
 
 ---
 
@@ -221,6 +249,15 @@ __init__(
 ```python
 detokenize(tokens: Sequence[int]) → str
 ```
+
+Converts a list of tokens to text.
+
+**Args:**
+
+- <b>`tokens`</b>: The list of tokens.
+
+**Returns:**
+The combined text of all tokens.
 
 ---
 
@@ -233,6 +270,14 @@ eval(
     threads: Optional[int] = None
 ) → None
 ```
+
+Evaluates a list of tokens.
+
+**Args:**
+
+- <b>`tokens`</b>: The list of tokens to evaluate.
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
 
 ---
 
@@ -253,6 +298,24 @@ generate(
 ) → Generator[int, NoneType, NoneType]
 ```
 
+Generates new tokens from a list of tokens.
+
+**Args:**
+
+- <b>`tokens`</b>: The list of tokens to generate tokens from.
+- <b>`top_k`</b>: The top-k value to use for sampling. Default: `40`
+- <b>`top_p`</b>: The top-p value to use for sampling. Default: `0.95`
+- <b>`temperature`</b>: The temperature to use for sampling. Default: `0.8`
+- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.0`
+- <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
+- <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
+- <b>`reset`</b>: Whether to reset the model state before generating text. Default: `True`
+
+**Returns:**
+The generated tokens.
+
 ---
 
 #### <kbd>method</kbd> `LLM.is_eos_token`
@@ -261,6 +324,15 @@ generate(
 is_eos_token(token: int) → bool
 ```
 
+Checks if a token is an end-of-sequence token.
+
+**Args:**
+
+- <b>`token`</b>: The token to check.
+
+**Returns:**
+`True` if the token is an end-of-sequence token else `False`.
+
 ---
 
 #### <kbd>method</kbd> `LLM.reset`
@@ -268,6 +340,8 @@ is_eos_token(token: int) → bool
 ```python
 reset() → None
 ```
+
+Resets the model state.
 
 ---
 
@@ -284,6 +358,20 @@ sample(
 ) → int
 ```
 
+Samples a token from the model.
+
+**Args:**
+
+- <b>`top_k`</b>: The top-k value to use for sampling. Default: `40`
+- <b>`top_p`</b>: The top-p value to use for sampling. Default: `0.95`
+- <b>`temperature`</b>: The temperature to use for sampling. Default: `0.8`
+- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.0`
+- <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
+- <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
+
+**Returns:**
+The sampled token.
+
 ---
 
 #### <kbd>method</kbd> `LLM.tokenize`
@@ -291,6 +379,15 @@ sample(
 ```python
 tokenize(text: str) → List[int]
 ```
+
+Converts a text into list of tokens.
+
+**Args:**
+
+- <b>`text`</b>: The text to tokenize.
+
+**Returns:**
+The list of tokens.
 
 ---
 
@@ -312,6 +409,26 @@ __call__(
     reset: Optional[bool] = None
 ) → str
 ```
+
+Generates text from a prompt.
+
+**Args:**
+
+- <b>`prompt`</b>: The prompt to generate text from.
+- <b>`max_new_tokens`</b>: The maximum number of new tokens to generate. Default: `256`
+- <b>`top_k`</b>: The top-k value to use for sampling. Default: `40`
+- <b>`top_p`</b>: The top-p value to use for sampling. Default: `0.95`
+- <b>`temperature`</b>: The temperature to use for sampling. Default: `0.8`
+- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.0`
+- <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
+- <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
+- <b>`stop`</b>: A list of sequences to stop generation when encountered. Default: `None`
+- <b>`reset`</b>: Whether to reset the model state before generating text. Default: `True`
+
+**Returns:**
+The generated text.
 
 <!-- API_DOCS -->
 

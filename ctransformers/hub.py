@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,7 +32,7 @@ class AutoConfig:
         cls,
         model_path_or_repo_id: str,
         **kwargs,
-    ) -> AutoConfig:
+    ) -> 'AutoConfig':
         path_type = get_path_type(model_path_or_repo_id)
         if not path_type:
             raise ValueError(
@@ -58,18 +56,22 @@ class AutoConfig:
         return auto_config
 
     @classmethod
-    def _update_from_repo(cls, repo_id: str, auto_config: AutoConfig) -> None:
+    def _update_from_repo(
+        cls,
+        repo_id: str,
+        auto_config: 'AutoConfig',
+    ) -> None:
         path = snapshot_download(repo_id=repo_id, allow_patterns='config.json')
         cls._update_from_dir(path, auto_config)
 
     @classmethod
-    def _update_from_dir(cls, path: str, auto_config: AutoConfig) -> None:
+    def _update_from_dir(cls, path: str, auto_config: 'AutoConfig') -> None:
         path = (Path(path) / 'config.json').resolve()
         if path.is_file():
             cls._update_from_file(path, auto_config)
 
     @classmethod
-    def _update_from_file(cls, path: str, auto_config: AutoConfig) -> None:
+    def _update_from_file(cls, path: str, auto_config: 'AutoConfig') -> None:
         with open(path) as f:
             config = json.load(f)
 
@@ -101,6 +103,20 @@ class AutoModelForCausalLM:
         lib: Optional[str] = None,
         **kwargs,
     ) -> LLM:
+        """
+        Loads the language model from a local file or remote repo.
+
+        Args:
+            model_path_or_repo_id: The path to a model file or directory or the
+            name of a Hugging Face Hub model repo.
+            model_type: The model type.
+            model_file: The name of the model file in repo or directory.
+            config: `AutoConfig` object.
+            lib: The path to a shared library or one of `avx2`, `avx`, `basic`.
+
+        Returns:
+            `LLM` object.
+        """
         config = config or AutoConfig.from_pretrained(
             model_path_or_repo_id,
             **kwargs,

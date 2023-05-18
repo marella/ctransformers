@@ -1,3 +1,4 @@
+import inspect
 import re
 from dataclasses import dataclass
 from functools import partial
@@ -44,6 +45,34 @@ class Config:
     max_new_tokens: int = 256
     stop: Optional[Sequence[str]] = None
     reset: bool = True
+
+
+docs = dict(
+    top_k='The top-k value to use for sampling.',
+    top_p='The top-p value to use for sampling.',
+    temperature='The temperature to use for sampling.',
+    repetition_penalty='The repetition penalty to use for sampling.',
+    last_n_tokens='The number of last tokens to use for repetition penalty.',
+    seed='The seed value to use for sampling tokens.',
+    max_new_tokens='The maximum number of new tokens to generate.',
+    stop='A list of sequences to stop generation when encountered.',
+    reset='Whether to reset the model state before generating text.',
+    batch_size='The batch size to use for evaluating tokens.',
+    threads='The number of threads to use for evaluating tokens.',
+)
+
+for k in docs:
+    docs[k] = f'{k}: {docs[k]} Default: `{getattr(Config, k)}`'
+
+
+def doc(fn):
+    doc = []
+    for param in inspect.signature(fn).parameters:
+        if param in docs:
+            doc.append(docs[param])
+    doc = ('\n' + ' ' * 12).join(doc)
+    fn.__doc__ = fn.__doc__.format(params=doc)
+    return fn
 
 
 def get(*values):
@@ -101,6 +130,15 @@ class LLM:
         config: Optional[Config] = None,
         lib: Optional[str] = None,
     ):
+        """
+        Loads the language model from a local file.
+
+        Args:
+            model_path: The path to a model file.
+            model_type: The model type.
+            config: `Config` object.
+            lib: The path to a shared library or one of `avx2`, `avx`, `basic`.
+        """
         self._model_path = model_path
         self._model_type = model_type
         self._config = config or Config()
@@ -119,14 +157,17 @@ class LLM:
 
     @property
     def model_path(self) -> str:
+        """The path to the model file."""
         return self._model_path
 
     @property
     def model_type(self) -> str:
+        """The model type."""
         return self._model_type
 
     @property
     def config(self) -> Config:
+        """The config object."""
         return self._config
 
     def __getattr__(self, name: str) -> Callable:
@@ -136,11 +177,29 @@ class LLM:
         raise AttributeError(f"'LLM' object has no attribute '{name}'")
 
     def tokenize(self, text: str) -> List[int]:
+        """
+        Converts a text into list of tokens.
+
+        Args:
+            text: The text to tokenize.
+
+        Returns:
+            The list of tokens.
+        """
         tokens = (c_int * len(text))()
         n_tokens = self.ctransformers_llm_tokenize(text.encode(), tokens)
         return tokens[:n_tokens]
 
     def detokenize(self, tokens: Sequence[int]) -> str:
+        """
+        Converts a list of tokens to text.
+
+        Args:
+            tokens: The list of tokens.
+
+        Returns:
+            The combined text of all tokens.
+        """
         if isinstance(tokens, int):
             tokens = [tokens]
         texts = []
@@ -150,8 +209,18 @@ class LLM:
         return ''.join(texts)
 
     def is_eos_token(self, token: int) -> bool:
+        """
+        Checks if a token is an end-of-sequence token.
+
+        Args:
+            token: The token to check.
+
+        Returns:
+            `True` if the token is an end-of-sequence token else `False`.
+        """
         return self.ctransformers_llm_is_eos_token(token)
 
+    @doc
     def eval(
         self,
         tokens: Sequence[int],
@@ -159,6 +228,13 @@ class LLM:
         batch_size: Optional[int] = None,
         threads: Optional[int] = None,
     ) -> None:
+        """
+        Evaluates a list of tokens.
+
+        Args:
+            tokens: The list of tokens to evaluate.
+            {params}
+        """
         config = self.config
         batch_size = get(batch_size, config.batch_size)
         threads = get(threads, config.threads)
@@ -170,6 +246,7 @@ class LLM:
         if not status:
             raise RuntimeError('Failed to evaluate tokens.')
 
+    @doc
     def sample(
         self,
         *,
@@ -180,6 +257,15 @@ class LLM:
         last_n_tokens: Optional[int] = None,
         seed: Optional[int] = None,
     ) -> int:
+        """
+        Samples a token from the model.
+
+        Args:
+            {params}
+
+        Returns:
+            The sampled token.
+        """
         config = self.config
         top_k = get(top_k, config.top_k)
         top_p = get(top_p, config.top_p)
@@ -198,12 +284,16 @@ class LLM:
         )
 
     def reset(self) -> None:
+        """
+        Resets the model state.
+        """
         self.ctransformers_llm_reset()
 
     def __del__(self):
         if self._llm is not None:
             self.ctransformers_llm_delete()
 
+    @doc
     def generate(
         self,
         tokens: Sequence[int],
@@ -218,6 +308,16 @@ class LLM:
         threads: Optional[int] = None,
         reset: Optional[bool] = None,
     ) -> Generator[int, None, None]:
+        """
+        Generates new tokens from a list of tokens.
+
+        Args:
+            tokens: The list of tokens to generate tokens from.
+            {params}
+
+        Returns:
+            The generated tokens.
+        """
         config = self.config
         reset = get(reset, config.reset)
 
@@ -311,6 +411,7 @@ class LLM:
         if text:
             yield text
 
+    @doc
     def __call__(
         self,
         prompt: str,
@@ -327,6 +428,16 @@ class LLM:
         stop: Optional[Sequence[str]] = None,
         reset: Optional[bool] = None,
     ) -> str:
+        """
+        Generates text from a prompt.
+
+        Args:
+            prompt: The prompt to generate text from.
+            {params}
+
+        Returns:
+            The generated text.
+        """
         text = self._stream(
             prompt,
             max_new_tokens=max_new_tokens,
