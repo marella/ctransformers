@@ -168,6 +168,7 @@ print(llm_chain.run('What is AI?'))
 | `seed`               | `int`       | The seed value to use for sampling tokens.               | `-1`    |
 | `max_new_tokens`     | `int`       | The maximum number of new tokens to generate.            | `256`   |
 | `stop`               | `List[str]` | A list of sequences to stop generation when encountered. | `None`  |
+| `stream`             | `bool`      | Whether to stream the generated text.                    | `False` |
 | `reset`              | `bool`      | Whether to reset the model state before generating text. | `True`  |
 | `batch_size`         | `int`       | The batch size to use for evaluating tokens.             | `8`     |
 | `threads`            | `int`       | The number of threads to use for evaluating tokens.      | `-1`    |
@@ -406,8 +407,9 @@ __call__(
     batch_size: Optional[int] = None,
     threads: Optional[int] = None,
     stop: Optional[Sequence[str]] = None,
+    stream: Optional[bool] = None,
     reset: Optional[bool] = None
-) → str
+) → Union[str, Generator[str, NoneType, NoneType]]
 ```
 
 Generates text from a prompt.
@@ -425,6 +427,7 @@ Generates text from a prompt.
 - <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
 - <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
 - <b>`stop`</b>: A list of sequences to stop generation when encountered. Default: `None`
+- <b>`stream`</b>: Whether to stream the generated text. Default: `False`
 - <b>`reset`</b>: Whether to reset the model state before generating text. Default: `True`
 
 **Returns:**

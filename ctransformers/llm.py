@@ -20,6 +20,7 @@ from typing import (
     List,
     Optional,
     Sequence,
+    Union,
 )
 
 from .lib import find_library
@@ -45,6 +46,7 @@ class Config:
     # generate
     max_new_tokens: int = 256
     stop: Optional[Sequence[str]] = None
+    stream: bool = False
     reset: bool = True
 
 
@@ -57,6 +59,7 @@ docs = OrderedDict(
     seed='The seed value to use for sampling tokens.',
     max_new_tokens='The maximum number of new tokens to generate.',
     stop='A list of sequences to stop generation when encountered.',
+    stream='Whether to stream the generated text.',
     reset='Whether to reset the model state before generating text.',
     batch_size='The batch size to use for evaluating tokens.',
     threads='The number of threads to use for evaluating tokens.',
@@ -416,8 +419,9 @@ class LLM:
         batch_size: Optional[int] = None,
         threads: Optional[int] = None,
         stop: Optional[Sequence[str]] = None,
+        stream: Optional[bool] = None,
         reset: Optional[bool] = None,
-    ) -> str:
+    ) -> Union[str, Generator[str, None, None]]:
         """Generates text from a prompt.
 
         Args:
@@ -427,6 +431,9 @@ class LLM:
         Returns:
             The generated text.
         """
+        config = self.config
+        stream = get(stream, config.stream)
+
         text = self._stream(
             prompt,
             max_new_tokens=max_new_tokens,
@@ -441,4 +448,6 @@ class LLM:
             stop=stop,
             reset=reset,
         )
+        if stream:
+            return text
         return ''.join(text)

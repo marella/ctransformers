@@ -81,7 +81,7 @@ class CTransformers(LLM):
             The generated text.
         """
         text = []
-        for chunk in self.client._stream(prompt, stop=stop):
+        for chunk in self.client(prompt, stop=stop, stream=True):
             text.append(chunk)
             if run_manager:
                 run_manager.on_llm_new_token(chunk, verbose=self.verbose)
