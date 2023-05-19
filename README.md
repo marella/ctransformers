@@ -154,23 +154,23 @@ print(llm_chain.run('What is AI?'))
 
 ## Documentation
 
-### Parameters
+<!-- API_DOCS -->
 
-| Name                 | Type        | Description                                              | Default |
+### Config
+
+| Parameter            | Type        | Description                                              | Default |
 | :------------------- | :---------- | :------------------------------------------------------- | :------ |
 | `top_k`              | `int`       | The top-k value to use for sampling.                     | `40`    |
 | `top_p`              | `float`     | The top-p value to use for sampling.                     | `0.95`  |
 | `temperature`        | `float`     | The temperature to use for sampling.                     | `0.8`   |
 | `repetition_penalty` | `float`     | The repetition penalty to use for sampling.              | `1.0`   |
 | `last_n_tokens`      | `int`       | The number of last tokens to use for repetition penalty. | `64`    |
-| `seed`               | `int`       | The seed value to use for sampling tokens.               | Random  |
+| `seed`               | `int`       | The seed value to use for sampling tokens.               | `-1`    |
 | `max_new_tokens`     | `int`       | The maximum number of new tokens to generate.            | `256`   |
-| `stop`               | `List[str]` | A list of sequences to stop generation when encountered. | `[]`    |
+| `stop`               | `List[str]` | A list of sequences to stop generation when encountered. | `None`  |
 | `reset`              | `bool`      | Whether to reset the model state before generating text. | `True`  |
 | `batch_size`         | `int`       | The batch size to use for evaluating tokens.             | `8`     |
-| `threads`            | `int`       | The number of threads to use for evaluating tokens.      | Auto    |
-
-<!-- API_DOCS -->
+| `threads`            | `int`       | The number of threads to use for evaluating tokens.      | `-1`    |
 
 ### <kbd>class</kbd> `AutoModelForCausalLM`
 

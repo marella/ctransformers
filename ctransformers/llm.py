@@ -1,5 +1,6 @@
 import inspect
 import re
+from collections import OrderedDict
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -47,7 +48,7 @@ class Config:
     reset: bool = True
 
 
-docs = dict(
+docs = OrderedDict(
     top_k='The top-k value to use for sampling.',
     top_p='The top-p value to use for sampling.',
     temperature='The temperature to use for sampling.',
@@ -61,15 +62,13 @@ docs = dict(
     threads='The number of threads to use for evaluating tokens.',
 )
 
-for k in docs:
-    docs[k] = f'{k}: {docs[k]} Default: `{getattr(Config, k)}`'
-
 
 def doc(fn):
     doc = []
     for param in inspect.signature(fn).parameters:
         if param in docs:
-            doc.append(docs[param])
+            default = getattr(Config, param)
+            doc.append(f'{param}: {docs[param]} Default: `{default}`')
     doc = ('\n' + ' ' * 12).join(doc)
     fn.__doc__ = fn.__doc__.format(params=doc)
     return fn
@@ -130,8 +129,7 @@ class LLM:
         config: Optional[Config] = None,
         lib: Optional[str] = None,
     ):
-        """
-        Loads the language model from a local file.
+        """Loads the language model from a local file.
 
         Args:
             model_path: The path to a model file.
@@ -177,8 +175,7 @@ class LLM:
         raise AttributeError(f"'LLM' object has no attribute '{name}'")
 
     def tokenize(self, text: str) -> List[int]:
-        """
-        Converts a text into list of tokens.
+        """Converts a text into list of tokens.
 
         Args:
             text: The text to tokenize.
@@ -191,8 +188,7 @@ class LLM:
         return tokens[:n_tokens]
 
     def detokenize(self, tokens: Sequence[int]) -> str:
-        """
-        Converts a list of tokens to text.
+        """Converts a list of tokens to text.
 
         Args:
             tokens: The list of tokens.
@@ -209,8 +205,7 @@ class LLM:
         return ''.join(texts)
 
     def is_eos_token(self, token: int) -> bool:
-        """
-        Checks if a token is an end-of-sequence token.
+        """Checks if a token is an end-of-sequence token.
 
         Args:
             token: The token to check.
@@ -228,8 +223,7 @@ class LLM:
         batch_size: Optional[int] = None,
         threads: Optional[int] = None,
     ) -> None:
-        """
-        Evaluates a list of tokens.
+        """Evaluates a list of tokens.
 
         Args:
             tokens: The list of tokens to evaluate.
@@ -257,8 +251,7 @@ class LLM:
         last_n_tokens: Optional[int] = None,
         seed: Optional[int] = None,
     ) -> int:
-        """
-        Samples a token from the model.
+        """Samples a token from the model.
 
         Args:
             {params}
@@ -284,9 +277,7 @@ class LLM:
         )
 
     def reset(self) -> None:
-        """
-        Resets the model state.
-        """
+        """Resets the model state."""
         self.ctransformers_llm_reset()
 
     def __del__(self):
@@ -308,8 +299,7 @@ class LLM:
         threads: Optional[int] = None,
         reset: Optional[bool] = None,
     ) -> Generator[int, None, None]:
-        """
-        Generates new tokens from a list of tokens.
+        """Generates new tokens from a list of tokens.
 
         Args:
             tokens: The list of tokens to generate tokens from.
@@ -428,8 +418,7 @@ class LLM:
         stop: Optional[Sequence[str]] = None,
         reset: Optional[bool] = None,
     ) -> str:
-        """
-        Generates text from a prompt.
+        """Generates text from a prompt.
 
         Args:
             prompt: The prompt to generate text from.

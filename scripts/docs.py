@@ -6,14 +6,38 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent.resolve()
 sys.path.append(str(ROOT))
 
+from typing import get_type_hints
+
 from lazydocs import MarkdownGenerator
-from ctransformers import LLM, AutoModelForCausalLM
+from ctransformers import Config, LLM, AutoModelForCausalLM
+from ctransformers.llm import docs as config_docs
+
+# Config Docs
+
+docs = """
+
+### Config
+
+| Parameter | Type  | Description | Default |
+| :-------- | :---- | :---------- | :------ |
+"""
+for param, description in config_docs.items():
+    if param == 'stop':
+        type_ = 'List[str]'
+    else:
+        type_ = get_type_hints(Config)[param].__name__
+    default = getattr(Config, param)
+    docs += f'| `{param}` | `{type_}` | {description} | `{default}` |\n'
+docs += '\n'
+
+# Class Docs
 
 generator = MarkdownGenerator()
-docs = ''
 for class_ in (AutoModelForCausalLM, LLM):
     docs += generator.class2md(class_, depth=3)
 docs += '---\n' + generator.func2md(LLM.__call__, clsname='LLM', depth=4)
+
+# Save
 
 README = ROOT / 'README.md'
 MARKER = '<!-- API_DOCS -->'

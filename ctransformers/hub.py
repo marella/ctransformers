@@ -103,8 +103,7 @@ class AutoModelForCausalLM:
         lib: Optional[str] = None,
         **kwargs,
     ) -> LLM:
-        """
-        Loads the language model from a local file or remote repo.
+        """Loads the language model from a local file or remote repo.
 
         Args:
             model_path_or_repo_id: The path to a model file or directory or the
