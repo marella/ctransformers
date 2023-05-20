@@ -88,6 +88,10 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
     fin.read((char *)&hparams.n_head, sizeof(hparams.n_head));
     fin.read((char *)&hparams.n_layer, sizeof(hparams.n_layer));
     fin.read((char *)&hparams.ftype, sizeof(hparams.ftype));
+
+    const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
+
+    hparams.ftype %= GGML_QNT_VERSION_FACTOR;
   }
 
   // load vocab
@@ -102,12 +106,15 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
     }
 
     std::string word;
+    std::vector<char> buf(128);
+
     for (int i = 0; i < n_vocab; i++) {
       uint32_t len;
       fin.read((char *)&len, sizeof(len));
 
-      word.resize(len);
-      fin.read((char *)word.data(), len);
+      buf.resize(len);
+      fin.read((char *)buf.data(), len);
+      word.assign(buf.data(), len);
 
       vocab.token_to_id[word] = i;
       vocab.id_to_token[i] = word;
@@ -180,7 +187,7 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
     ctx_size +=
         n_ctx * n_layer * n_embd * ggml_type_sizef(GGML_TYPE_F32);  // memory_v
 
-    ctx_size += (6 + 12 * n_layer) * 256;  // object overhead
+    ctx_size += (6 + 12 * n_layer) * 512;  // object overhead
   }
 
   // create the ggml context
@@ -414,6 +421,14 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
   static size_t buf_size = 256u * 1024 * 1024;
   static void *buf = malloc(buf_size);
 
+  // use 2 scratch buffers
+  // TODO: very hacky solution - reimplement in a more elegant way
+  static size_t scr0_size = 256u * 1024 * 1024;
+  static void *scr0 = malloc(scr0_size);
+
+  static size_t scr1_size = 256u * 1024 * 1024;
+  static void *scr1 = malloc(scr1_size);
+
   if (mem_per_token > 0 && mem_per_token * N > buf_size) {
     const size_t buf_size_new =
         1.1 *
@@ -455,6 +470,12 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
 
   for (int il = 0; il < n_layer; ++il) {
     struct ggml_tensor *cur;
+
+    ggml_set_scratch(ctx0, {
+                               0,
+                               scr0_size,
+                               scr0,
+                           });
 
     // norm
     {
@@ -551,17 +572,17 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
 
       // KQ_scaled = KQ / sqrt(n_embd/n_head)
       // [n_past + N, N, 12]
-      struct ggml_tensor *KQ_scaled = ggml_scale(
+      struct ggml_tensor *KQ_scaled = ggml_scale_inplace(
           ctx0, KQ, ggml_new_f32(ctx0, 1.0f / sqrt(float(n_embd) / n_head)));
 
       // KQ_masked = mask_past(KQ_scaled)
       // [n_past + N, N, 12]
       struct ggml_tensor *KQ_masked =
-          ggml_diag_mask_inf(ctx0, KQ_scaled, n_past);
+          ggml_diag_mask_inf_inplace(ctx0, KQ_scaled, n_past);
 
       // KQ = soft_max(KQ_masked)
       // [n_past + N, N, 12]
-      struct ggml_tensor *KQ_soft_max = ggml_soft_max(ctx0, KQ_masked);
+      struct ggml_tensor *KQ_soft_max = ggml_soft_max_inplace(ctx0, KQ_masked);
 
       // V_trans = Vmem.view(n_embd/n_head, n_head, n_past + N).permute(1, 2, 0,
       // 3).contiguous() [n_past + N, 64, 12]
@@ -613,6 +634,12 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
 
     struct ggml_tensor *inpFF = cur;
 
+    ggml_set_scratch(ctx0, {
+                               0,
+                               scr1_size,
+                               scr1,
+                           });
+
     // feed-forward network
     {
       // norm
@@ -663,6 +690,12 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
     inpL = ggml_add(ctx0, cur, inpFF);
   }
 
+  ggml_set_scratch(ctx0, {
+                             0,
+                             scr0_size,
+                             scr0,
+                         });
+
   // norm
   {
     // [ 768, N]
@@ -675,13 +708,19 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
                     ggml_repeat(ctx0, model.ln_f_b, inpL));
   }
 
+  ggml_set_scratch(ctx0, {
+                             0,
+                             0,
+                             nullptr,
+                         });
+
   // inpL = WTE * inpL
   // [ 768, 50257] - model.lm_head
   // [ 768, N]     - inpL
   inpL = ggml_mul_mat(ctx0, model.lm_head, inpL);
 
   // logits -> probs
-  // inpL = ggml_soft_max(ctx0, inpL);
+  // inpL = ggml_soft_max_inplace(ctx0, inpL);
 
   // run the computation
   ggml_build_forward_expand(&gf, inpL);
@@ -703,7 +742,7 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
   if (mem_per_token == 0) {
     mem_per_token = ggml_used_mem(ctx0) / N;
   }
-  // printf("used_mem = %zu\n", ggml_used_mem(ctx0));
+  // printf("used_mem = %zu MB\n", ggml_used_mem(ctx0)/(1024*1024));
 
   ggml_free(ctx0);
 
