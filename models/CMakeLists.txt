@@ -52,22 +52,30 @@ add_compile_options(
 
 # Architecture Flags
 
-if (APPLE)
-    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
-endif()
-
-if (MSVC)
-    if (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx2")
-        add_compile_options(/arch:AVX2)
-    elseif (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx")
-        add_compile_options(/arch:AVX)
-    endif()
+if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+    message(STATUS "ARM detected")
+    # Apple silicon.
+    add_compile_options(-mcpu=native)
 else()
-    if (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx2")
-        add_compile_options(-mfma -mavx2)
-        add_compile_options(-mf16c -mavx)
-    elseif (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx")
-        add_compile_options(-mf16c -mavx)
+    message(STATUS "x86 detected")
+    if (APPLE)
+        # Universal binary.
+        set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+    endif()
+
+    if (MSVC)
+        if (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx2")
+            add_compile_options(/arch:AVX2)
+        elseif (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx")
+            add_compile_options(/arch:AVX)
+        endif()
+    else()
+        if (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx2")
+            add_compile_options(-mfma -mavx2)
+            add_compile_options(-mf16c -mavx)
+        elseif (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx")
+            add_compile_options(-mf16c -mavx)
+        endif()
     endif()
 endif()
 
