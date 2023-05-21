@@ -66,11 +66,11 @@ class LLM {
     return initialized_ = true;
   }
 
-  std::vector<gpt_vocab::id> Tokenize(const std::string &text) const {
+  virtual std::vector<gpt_vocab::id> Tokenize(const std::string &text) const {
     return gpt_tokenize(vocab_, text);
   }
 
-  const std::string &Detokenize(const gpt_vocab::id id) const {
+  virtual const std::string &Detokenize(const gpt_vocab::id id) const {
     const auto it = vocab_.id_to_token.find(id);
     if (it == vocab_.id_to_token.end()) {
       return kEmptyString;
@@ -92,9 +92,10 @@ class LLM {
     return true;
   }
 
-  gpt_vocab::id Sample(const int top_k, const float top_p,
-                       const float temperature, const float repetition_penalty,
-                       int last_n_tokens, int seed) const {
+  virtual gpt_vocab::id Sample(const int top_k, const float top_p,
+                               const float temperature,
+                               const float repetition_penalty,
+                               int last_n_tokens, int seed) const {
     if (logits_.empty()) {
       return EosToken();
     }
@@ -116,7 +117,7 @@ class LLM {
         temperature, repetition_penalty, recent_tokens, rng);
   }
 
-  bool IsEosToken(const gpt_vocab::id token) const {
+  virtual bool IsEosToken(const gpt_vocab::id token) const {
     if (token == EosToken()) {
       return true;
     }
@@ -133,6 +134,7 @@ class LLM {
   }
 
  protected:
+  const std::string kEmptyString = "";
   int n_ctx_ = -1;
   gpt_vocab vocab_;
   size_t mem_per_token_ = 0;
@@ -143,9 +145,20 @@ class LLM {
   virtual bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
                     const int n_past) = 0;
 
+  virtual gpt_vocab::id EosToken() const {
+    const auto it = vocab_.token_to_id.find("<|endoftext|>");
+    if (it != vocab_.token_to_id.end()) {
+      return it->second;
+    }
+    return 0;
+  }
+
+  virtual int VocabSize() const { return vocab_.id_to_token.size(); }
+
+  int ContextLength() const { return n_ctx_; }
+
  private:
   bool initialized_ = false;
-  const std::string kEmptyString = "";
 
   bool EvalInternal(const std::vector<gpt_vocab::id> &tokens, int threads) {
     if (threads < 0) {
@@ -161,18 +174,6 @@ class LLM {
     }
     return true;
   }
-
-  gpt_vocab::id EosToken() const {
-    const auto it = vocab_.token_to_id.find("<|endoftext|>");
-    if (it != vocab_.token_to_id.end()) {
-      return it->second;
-    }
-    return 0;
-  }
-
-  int ContextLength() const { return n_ctx_; }
-
-  int VocabSize() const { return vocab_.id_to_token.size(); }
 };
 
 #define REGISTER_LLM(_name)                                                \

@@ -4,6 +4,7 @@
 #include "llms/gpt-neox.cc"
 #include "llms/gpt2.cc"
 #include "llms/gptj.cc"
+#include "llms/llama.cc"
 #include "llms/mpt.cc"
 #include "llms/starcoder.cc"
 
@@ -27,6 +28,8 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type) {
     llm = new gptj_llm;
   } else if (type == "gptneox") {
     llm = new gpt_neox_llm;
+  } else if (type == "llama") {
+    llm = new llama_llm;
   } else if (type == "mpt") {
     llm = new mpt_llm;
   } else if (type == "starcoder") {
