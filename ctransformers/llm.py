@@ -35,7 +35,7 @@ class Config:
     top_k: int = 40
     top_p: float = 0.95
     temperature: float = 0.8
-    repetition_penalty: float = 1.0
+    repetition_penalty: float = 1.1
     last_n_tokens: int = 64
     seed: int = -1
 

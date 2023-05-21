@@ -165,7 +165,7 @@ print(llm_chain.run('What is AI?'))
 | `top_k`              | `int`       | The top-k value to use for sampling.                     | `40`    |
 | `top_p`              | `float`     | The top-p value to use for sampling.                     | `0.95`  |
 | `temperature`        | `float`     | The temperature to use for sampling.                     | `0.8`   |
-| `repetition_penalty` | `float`     | The repetition penalty to use for sampling.              | `1.0`   |
+| `repetition_penalty` | `float`     | The repetition penalty to use for sampling.              | `1.1`   |
 | `last_n_tokens`      | `int`       | The number of last tokens to use for repetition penalty. | `64`    |
 | `seed`               | `int`       | The seed value to use for sampling tokens.               | `-1`    |
 | `max_new_tokens`     | `int`       | The maximum number of new tokens to generate.            | `256`   |
@@ -309,7 +309,7 @@ Generates new tokens from a list of tokens.
 - <b>`top_k`</b>: The top-k value to use for sampling. Default: `40`
 - <b>`top_p`</b>: The top-p value to use for sampling. Default: `0.95`
 - <b>`temperature`</b>: The temperature to use for sampling. Default: `0.8`
-- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.0`
+- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.1`
 - <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
 - <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
 - <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
@@ -368,7 +368,7 @@ Samples a token from the model.
 - <b>`top_k`</b>: The top-k value to use for sampling. Default: `40`
 - <b>`top_p`</b>: The top-p value to use for sampling. Default: `0.95`
 - <b>`temperature`</b>: The temperature to use for sampling. Default: `0.8`
-- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.0`
+- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.1`
 - <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
 - <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
 
@@ -423,7 +423,7 @@ Generates text from a prompt.
 - <b>`top_k`</b>: The top-k value to use for sampling. Default: `40`
 - <b>`top_p`</b>: The top-p value to use for sampling. Default: `0.95`
 - <b>`temperature`</b>: The temperature to use for sampling. Default: `0.8`
-- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.0`
+- <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.1`
 - <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
 - <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
 - <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
