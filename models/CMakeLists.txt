@@ -101,3 +101,6 @@ if (APPLE)
         message(WARNING "Accelerate framework not found")
     endif()
 endif()
+
+add_executable(main main.cc)
+target_link_libraries(main PRIVATE ctransformers)
