@@ -61,6 +61,11 @@ int main(const int argc, const char** argv) {
   const int n_tokens = ctransformers_llm_tokenize(llm, prompt, tokens.data());
   tokens.resize(n_tokens);
   printf("✔\n");
+  printf("> [ ");
+  for (const int token : tokens) {
+    printf("%d ", token);
+  }
+  printf("]\n");
 
   printf("eval ... ");
   fflush(stdout);
@@ -77,19 +82,19 @@ int main(const int argc, const char** argv) {
   const int token = ctransformers_llm_sample(
       llm, top_k, top_p, temperature, repetition_penalty, last_n_tokens, seed);
   printf("✔\n");
+  printf("> %d\n", token);
 
   printf("detokenize ... ");
   fflush(stdout);
   const char* text = ctransformers_llm_detokenize(llm, token);
   printf("✔\n");
+  printf("> '%s'\n", text);
 
   printf("delete ... ");
   fflush(stdout);
   ctransformers_llm_delete(llm);
   printf("✔\n");
 
-  printf("\n");
-  printf("response : '%s'\n", text);
   printf("\n");
 
   return 0;
