@@ -87,22 +87,41 @@ def load_library(path: Optional[str] = None) -> Any:
     path = find_library(path)
     lib = CDLL(path)
 
-    lib.ctransformers_llm_create.argtypes = [c_char_p, c_char_p]
+    lib.ctransformers_llm_create.argtypes = [
+        c_char_p,  # model_path
+        c_char_p,  # model_type
+    ]
     lib.ctransformers_llm_create.restype = llm_p
 
     lib.ctransformers_llm_delete.argtypes = [llm_p]
     lib.ctransformers_llm_delete.restype = None
 
-    lib.ctransformers_llm_tokenize.argtypes = [llm_p, c_char_p, c_int_p]
+    lib.ctransformers_llm_tokenize.argtypes = [
+        llm_p,
+        c_char_p,  # text
+        c_int_p,  # output
+    ]
     lib.ctransformers_llm_tokenize.restype = c_int
 
-    lib.ctransformers_llm_detokenize.argtypes = [llm_p, c_int]
+    lib.ctransformers_llm_detokenize.argtypes = [
+        llm_p,
+        c_int,  # token
+    ]
     lib.ctransformers_llm_detokenize.restype = c_char_p
 
-    lib.ctransformers_llm_is_eos_token.argtypes = [llm_p, c_int]
+    lib.ctransformers_llm_is_eos_token.argtypes = [
+        llm_p,
+        c_int,  # token
+    ]
     lib.ctransformers_llm_is_eos_token.restype = c_bool
 
-    lib.ctransformers_llm_batch_eval.argtypes = [llm_p, c_int_p, c_int, c_int]
+    lib.ctransformers_llm_batch_eval.argtypes = [
+        llm_p,
+        c_int_p,  # tokens
+        c_int,  # n_tokens
+        c_int,  # batch_size
+        c_int,  # threads
+    ]
     lib.ctransformers_llm_batch_eval.restype = c_bool
 
     lib.ctransformers_llm_sample.argtypes = [

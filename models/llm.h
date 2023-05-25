@@ -164,6 +164,7 @@ class LLM {
     if (threads < 0) {
       threads = std::min((int)std::thread::hardware_concurrency(), 4);
     }
+    threads = std::max(threads, 1);
     const int n_past =
         std::min(ContextLength() - (int)tokens.size(), previous_tokens_.Size());
     if (!Eval(tokens, threads, n_past)) {
