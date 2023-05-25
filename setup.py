@@ -7,7 +7,7 @@ name = 'ctransformers'
 
 setup(
     name=name,
-    version='0.2.0',
+    version='0.2.1',
     description=
     'Python bindings for the Transformer models implemented in C/C++ using GGML library.',
     long_description=long_description,
