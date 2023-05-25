@@ -84,7 +84,7 @@ endif()
 add_library(
     ctransformers SHARED
     llm.cc
-    ggml/src/ggml.c
+    ggml.c
 )
 
 target_include_directories(ctransformers PRIVATE . ggml/include/ggml)
