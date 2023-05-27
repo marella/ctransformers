@@ -27,6 +27,8 @@ class llama_llm : public LLM {
     return token == EosToken();
   }
 
+  std::vector<float> &Logits() override { return ctx_->logits; }
+
   gpt_vocab::id Sample(const int top_k, const float top_p,
                        const float temperature, const float repetition_penalty,
                        int last_n_tokens, int seed) const override {

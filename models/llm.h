@@ -92,6 +92,8 @@ class LLM {
     return true;
   }
 
+  virtual std::vector<float> &Logits() { return logits_; }
+
   virtual gpt_vocab::id Sample(const int top_k, const float top_p,
                                const float temperature,
                                const float repetition_penalty,

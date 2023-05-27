@@ -24,8 +24,10 @@ from typing import (
 )
 
 from .lib import find_library
+from .utils import Vector
 
 c_int_p = POINTER(c_int)
+c_float_p = POINTER(c_float)
 llm_p = c_void_p
 
 
@@ -124,6 +126,11 @@ def load_library(path: Optional[str] = None) -> Any:
     ]
     lib.ctransformers_llm_batch_eval.restype = c_bool
 
+    lib.ctransformers_llm_logits_data.argtypes = [llm_p]
+    lib.ctransformers_llm_logits_data.restype = c_float_p
+    lib.ctransformers_llm_logits_size.argtypes = [llm_p]
+    lib.ctransformers_llm_logits_size.restype = c_int
+
     lib.ctransformers_llm_sample.argtypes = [
         llm_p,
         c_int,  # top_k
@@ -189,6 +196,12 @@ class LLM:
     def config(self) -> Config:
         """The config object."""
         return self._config
+
+    @property
+    def logits(self) -> List[float]:
+        """The unnormalized log probabilities."""
+        return Vector(self.ctransformers_llm_logits_data(),
+                      self.ctransformers_llm_logits_size())
 
     def __getattr__(self, name: str) -> Callable:
         lib, llm = self._lib, self._llm

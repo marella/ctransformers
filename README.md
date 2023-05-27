@@ -235,6 +235,12 @@ The config object.
 
 ---
 
+##### <kbd>property</kbd> LLM.logits
+
+The unnormalized log probabilities.
+
+---
+
 ##### <kbd>property</kbd> LLM.model_path
 
 The path to the model file.

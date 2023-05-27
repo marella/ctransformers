@@ -8,3 +8,11 @@ class TestModel:
                                                    lib=lib)
         response = llm('AI is going to', seed=5, max_new_tokens=3)
         assert response == ' be a big'
+
+        token = llm.sample()
+        logits = llm.logits
+        value = logits[token]
+        logits[token] -= 1
+        assert logits[token] == llm.logits[token] == value - 1
+        llm.logits[token] *= 2
+        assert logits[token] == llm.logits[token] == (value - 1) * 2
