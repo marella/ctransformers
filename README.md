@@ -235,6 +235,12 @@ The config object.
 
 ---
 
+##### <kbd>property</kbd> LLM.embeddings
+
+The input embeddings.
+
+---
+
 ##### <kbd>property</kbd> LLM.logits
 
 The unnormalized log probabilities.
@@ -267,6 +273,31 @@ Converts a list of tokens to text.
 
 **Returns:**
 The combined text of all tokens.
+
+---
+
+#### <kbd>method</kbd> `LLM.embed`
+
+```python
+embed(
+    input: Union[str, Sequence[int]],
+    batch_size: Optional[int] = None,
+    threads: Optional[int] = None
+) → List[float]
+```
+
+Computes embeddings for a text or list of tokens.
+
+> **Note:** Currently only LLaMA models support embeddings.
+
+**Args:**
+
+- <b>`input`</b>: The input text or list of tokens to get embeddings for.
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
+
+**Returns:**
+The input embeddings.
 
 ---
 

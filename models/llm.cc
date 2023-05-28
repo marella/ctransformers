@@ -71,7 +71,16 @@ bool ctransformers_llm_batch_eval(LLM* llm, const int* tokens,
 }
 
 float* ctransformers_llm_logits_data(LLM* llm) { return llm->Logits().data(); }
+
 int ctransformers_llm_logits_size(LLM* llm) { return llm->Logits().size(); }
+
+const float* ctransformers_llm_embeddings_data(LLM* llm) {
+  return llm->Embeddings().data();
+}
+
+int ctransformers_llm_embeddings_size(LLM* llm) {
+  return llm->Embeddings().size();
+}
 
 int ctransformers_llm_sample(LLM* llm, const int top_k, const float top_p,
                              const float temperature,

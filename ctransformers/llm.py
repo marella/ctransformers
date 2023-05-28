@@ -131,6 +131,11 @@ def load_library(path: Optional[str] = None) -> Any:
     lib.ctransformers_llm_logits_size.argtypes = [llm_p]
     lib.ctransformers_llm_logits_size.restype = c_int
 
+    lib.ctransformers_llm_embeddings_data.argtypes = [llm_p]
+    lib.ctransformers_llm_embeddings_data.restype = c_float_p
+    lib.ctransformers_llm_embeddings_size.argtypes = [llm_p]
+    lib.ctransformers_llm_embeddings_size.restype = c_int
+
     lib.ctransformers_llm_sample.argtypes = [
         llm_p,
         c_int,  # top_k
@@ -202,6 +207,12 @@ class LLM:
         """The unnormalized log probabilities."""
         return Vector(self.ctransformers_llm_logits_data(),
                       self.ctransformers_llm_logits_size())
+
+    @property
+    def embeddings(self) -> List[float]:
+        """The input embeddings."""
+        return Vector(self.ctransformers_llm_embeddings_data(),
+                      self.ctransformers_llm_embeddings_size())
 
     def __getattr__(self, name: str) -> Callable:
         lib, llm = self._lib, self._llm
@@ -483,3 +494,28 @@ class LLM:
         if stream:
             return text
         return ''.join(text)
+
+    @doc
+    def embed(
+        self,
+        input: Union[str, Sequence[int]],
+        *,
+        batch_size: Optional[int] = None,
+        threads: Optional[int] = None,
+    ) -> List[float]:
+        """Computes embeddings for a text or list of tokens.
+
+        > **Note:** Currently only LLaMA models support embeddings.
+
+        Args:
+            input: The input text or list of tokens to get embeddings for.
+            {params}
+
+        Returns:
+            The input embeddings.
+        """
+        if isinstance(input, str):
+            input = self.tokenize(input)
+        self.reset()
+        self.eval(input, batch_size=batch_size, threads=threads)
+        return list(self.embeddings)

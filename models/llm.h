@@ -94,6 +94,8 @@ class LLM {
 
   virtual std::vector<float> &Logits() { return logits_; }
 
+  virtual const std::vector<float> &Embeddings() const { return embeddings_; }
+
   virtual gpt_vocab::id Sample(const int top_k, const float top_p,
                                const float temperature,
                                const float repetition_penalty,
@@ -141,6 +143,7 @@ class LLM {
   gpt_vocab vocab_;
   size_t mem_per_token_ = 0;
   std::vector<float> logits_;
+  std::vector<float> embeddings_;
   RingBuffer previous_tokens_;
 
   virtual bool Load(const std::string &filename) = 0;

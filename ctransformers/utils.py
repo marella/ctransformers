@@ -23,6 +23,8 @@ class Vector(MutableSequence):
         return self._size
 
     def _validate_index(self, index: int) -> None:
+        if not isinstance(index, int):
+            raise TypeError('list index must be integer')
         if not 0 <= index < self._size:
             raise IndexError('list index out of range')
 

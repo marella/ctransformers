@@ -29,6 +29,10 @@ class llama_llm : public LLM {
 
   std::vector<float> &Logits() override { return ctx_->logits; }
 
+  const std::vector<float> &Embeddings() const override {
+    return ctx_->embedding;
+  }
+
   gpt_vocab::id Sample(const int top_k, const float top_p,
                        const float temperature, const float repetition_penalty,
                        int last_n_tokens, int seed) const override {
@@ -38,8 +42,7 @@ class llama_llm : public LLM {
     if (seed < 0) {
       seed = time(nullptr);
     }
-    std::mt19937 rng(seed);
-    ctx_->rng = rng;
+    ctx_->rng.seed(seed);
 
     const float *logits = llama_get_logits(ctx_);
     const int n_vocab = llama_n_vocab(ctx_);
@@ -77,6 +80,7 @@ class llama_llm : public LLM {
  protected:
   bool Load(const std::string &filename) override {
     llama_context_params params = llama_context_default_params();
+    params.embedding = true;
     ctx_ = llama_init_from_file(filename.c_str(), params);
     if (ctx_ == nullptr) {
       return false;
