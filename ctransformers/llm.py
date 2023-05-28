@@ -51,6 +51,9 @@ class Config:
     stream: bool = False
     reset: bool = True
 
+    # model
+    context_length: int = -1
+
 
 docs = OrderedDict(
     top_k='The top-k value to use for sampling.',
@@ -65,6 +68,7 @@ docs = OrderedDict(
     reset='Whether to reset the model state before generating text.',
     batch_size='The batch size to use for evaluating tokens.',
     threads='The number of threads to use for evaluating tokens.',
+    context_length='The maximum context length to use.',
 )
 
 
@@ -92,6 +96,7 @@ def load_library(path: Optional[str] = None) -> Any:
     lib.ctransformers_llm_create.argtypes = [
         c_char_p,  # model_path
         c_char_p,  # model_type
+        c_int,  # context_length
     ]
     lib.ctransformers_llm_create.restype = llm_p
 
@@ -171,9 +176,10 @@ class LLM:
             config: `Config` object.
             lib: The path to a shared library or one of `avx2`, `avx`, `basic`.
         """
+        config = config or Config()
         self._model_path = model_path
         self._model_type = model_type
-        self._config = config or Config()
+        self._config = config
         self._llm = None
         self._lib = None
 
@@ -181,8 +187,11 @@ class LLM:
             raise ValueError(f"Model path '{model_path}' doesn't exist.")
 
         self._lib = load_library(lib)
-        self._llm = self._lib.ctransformers_llm_create(model_path.encode(),
-                                                       model_type.encode())
+        self._llm = self._lib.ctransformers_llm_create(
+            model_path.encode(),
+            model_type.encode(),
+            config.context_length,
+        )
         if self._llm is None:
             raise RuntimeError(
                 f"Failed to create LLM '{model_type}' from '{model_path}'.")

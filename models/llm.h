@@ -55,11 +55,11 @@ class LLM {
  public:
   virtual ~LLM(){};
 
-  bool Init(const std::string &filename) {
+  bool Init(const std::string &filename, const int context_length) {
     if (initialized_) {
       return false;
     }
-    if (!Load(filename)) {
+    if (!Load(filename, context_length)) {
       return false;
     }
     previous_tokens_.Init(ContextLength());
@@ -78,8 +78,9 @@ class LLM {
     return it->second;
   }
 
-  bool BatchEval(const std::vector<gpt_vocab::id> &tokens, const int batch_size,
+  bool BatchEval(const std::vector<gpt_vocab::id> &tokens, int batch_size,
                  const int threads) {
+    batch_size = std::min(ContextLength(), batch_size);
     const int size = tokens.size();
     for (int start = 0; start < size; start += batch_size) {
       const int end = std::min(start + batch_size, (int)tokens.size());
@@ -146,7 +147,7 @@ class LLM {
   std::vector<float> embeddings_;
   RingBuffer previous_tokens_;
 
-  virtual bool Load(const std::string &filename) = 0;
+  virtual bool Load(const std::string &filename, const int context_length) = 0;
   virtual bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
                     const int n_past) = 0;
 
@@ -192,7 +193,8 @@ class LLM {
     }                                                                      \
                                                                            \
    protected:                                                              \
-    bool Load(const std::string &filename) override {                      \
+    bool Load(const std::string &filename,                                 \
+              const int context_length) override {                         \
       if (!_name##_model_load(filename, model_, vocab_)) {                 \
         return false;                                                      \
       }                                                                    \

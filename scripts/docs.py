@@ -28,7 +28,9 @@ for param, description in config_docs.items():
         type_ = get_type_hints(Config)[param].__name__
     default = getattr(Config, param)
     docs += f'| `{param}` | `{type_}` | {description} | `{default}` |\n'
-docs += '\n'
+docs += """
+> **Note:** Currently only LLaMA models support the `context_length` parameter.
+"""
 
 # Class Docs
 

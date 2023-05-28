@@ -174,6 +174,9 @@ print(llm_chain.run('What is AI?'))
 | `reset`              | `bool`      | Whether to reset the model state before generating text. | `True`  |
 | `batch_size`         | `int`       | The batch size to use for evaluating tokens.             | `8`     |
 | `threads`            | `int`       | The number of threads to use for evaluating tokens.      | `-1`    |
+| `context_length`     | `int`       | The maximum context length to use.                       | `-1`    |
+
+> **Note:** Currently only LLaMA models support the `context_length` parameter.
 
 ### <kbd>class</kbd> `AutoModelForCausalLM`
 

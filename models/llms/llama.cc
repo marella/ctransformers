@@ -78,9 +78,12 @@ class llama_llm : public LLM {
   }
 
  protected:
-  bool Load(const std::string &filename) override {
+  bool Load(const std::string &filename, const int context_length) override {
     llama_context_params params = llama_context_default_params();
     params.embedding = true;
+    if (context_length > 0) {
+      params.n_ctx = context_length;
+    }
     ctx_ = llama_init_from_file(filename.c_str(), params);
     if (ctx_ == nullptr) {
       return false;
