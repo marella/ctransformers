@@ -1,4 +1,9 @@
-from setuptools import setup
+import os
+
+if os.environ.get('CT_WHEEL') == '1':
+    from setuptools import setup
+else:
+    from skbuild import setup
 
 with open('README.md') as f:
     long_description = f.read()

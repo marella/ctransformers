@@ -13,7 +13,9 @@ def find_library(path: Optional[str] = None) -> str:
 
     system = platform.system()
     if not path:
-        if platform.processor() == 'arm':
+        if (lib_directory / 'local').is_dir():
+            path = 'local'
+        elif platform.processor() == 'arm':
             # Apple silicon doesn't support AVX/AVX2.
             path = 'basic' if system == 'Darwin' else ''
         else:
@@ -31,6 +33,9 @@ def find_library(path: Optional[str] = None) -> str:
 
     path = lib_directory / path / name
     if not path.is_file():
-        raise OSError('The current platform is not supported. ' +
-                      'Please try building the C++ library from source.')
+        raise OSError(
+            'Precompiled binaries are not available for the current platform. '
+            'Please reinstall from source using:\n\n'
+            '  pip uninstall ctransformers --yes\n'
+            '  pip install ctransformers --no-binary ctransformers\n\n')
     return str(path)
