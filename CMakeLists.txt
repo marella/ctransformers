@@ -1,8 +1,8 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required(VERSION 3.17)
 project(ctransformers C CXX)
 
-set(CTRANSFORMERS_INSTRUCTIONS "avx2" CACHE STRING "avx2 | avx | basic")
-message(STATUS "CTRANSFORMERS_INSTRUCTIONS: ${CTRANSFORMERS_INSTRUCTIONS}")
+set(CT_INSTRUCTIONS "avx2" CACHE STRING "avx2 | avx | basic")
+message(STATUS "CT_INSTRUCTIONS: ${CT_INSTRUCTIONS}")
 
 set(BUILD_SHARED_LIBS ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -54,8 +54,9 @@ add_compile_options(
 
 if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
     message(STATUS "ARM detected")
-    # Apple silicon.
-    add_compile_options(-mcpu=native)
+    if (NOT MSVC)
+        add_compile_options(-mcpu=native)
+    endif()
 else()
     message(STATUS "x86 detected")
     if (APPLE)
@@ -64,16 +65,18 @@ else()
     endif()
 
     if (MSVC)
-        if (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx2")
-            add_compile_options(/arch:AVX2)
-        elseif (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx")
-            add_compile_options(/arch:AVX)
+        if (CT_INSTRUCTIONS STREQUAL "avx2")
+            add_compile_options($<$<COMPILE_LANGUAGE:C>:/arch:AVX2>)
+            add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/arch:AVX2>)
+        elseif (CT_INSTRUCTIONS STREQUAL "avx")
+            add_compile_options($<$<COMPILE_LANGUAGE:C>:/arch:AVX>)
+            add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/arch:AVX>)
         endif()
     else()
-        if (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx2")
+        if (CT_INSTRUCTIONS STREQUAL "avx2")
             add_compile_options(-mfma -mavx2)
             add_compile_options(-mf16c -mavx)
-        elseif (CTRANSFORMERS_INSTRUCTIONS STREQUAL "avx")
+        elseif (CT_INSTRUCTIONS STREQUAL "avx")
             add_compile_options(-mf16c -mavx)
         endif()
     endif()
@@ -83,11 +86,11 @@ endif()
 
 add_library(
     ctransformers SHARED
-    llm.cc
-    ggml/src/ggml.c
+    models/llm.cc
+    models/ggml/ggml.c
 )
 
-target_include_directories(ctransformers PRIVATE . ggml/include/ggml)
+target_include_directories(ctransformers PRIVATE models)
 target_link_libraries(ctransformers PRIVATE Threads::Threads)
 set_target_properties(ctransformers PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -101,3 +104,11 @@ if (APPLE)
         message(WARNING "Accelerate framework not found")
     endif()
 endif()
+
+# scikit-build
+
+install(
+    TARGETS ctransformers
+    LIBRARY DESTINATION ctransformers/lib/local
+    RUNTIME DESTINATION ctransformers/lib/local
+)

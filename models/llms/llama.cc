@@ -2,7 +2,7 @@
 
 // https://github.com/ggerganov/llama.cpp/blob/master/examples/main/main.cpp
 
-#include "llms/llama/llama.cpp"
+#include "ggml/llama.cpp"
 
 class llama_llm : public LLM {
  public:

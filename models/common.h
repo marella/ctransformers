@@ -15,7 +15,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ggml.h"
+#include "ggml/ggml.h"
 
 // https://github.com/ggerganov/ggml/blob/master/examples/common.cpp
 

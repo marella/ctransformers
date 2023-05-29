@@ -1,6 +1,6 @@
 [submodule "models/ggml"]
-	path = models/ggml
+	path = models/submodules/ggml
 	url = https://github.com/ggerganov/ggml
 [submodule "models/llama.cpp"]
-	path = models/llama.cpp
+	path = models/submodules/llama.cpp
 	url = https://github.com/ggerganov/llama.cpp
