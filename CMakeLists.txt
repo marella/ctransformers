@@ -2,7 +2,13 @@ cmake_minimum_required(VERSION 3.17)
 project(ctransformers C CXX)
 
 set(CT_INSTRUCTIONS "avx2" CACHE STRING "avx2 | avx | basic")
+
+option(CT_CUBLAS "Use cuBLAS" OFF)
+set(CT_CUDA_DMMV_X "32" CACHE STRING "x stride for dmmv CUDA kernels")
+set(CT_CUDA_DMMV_Y "1" CACHE STRING "y block size for dmmv CUDA kernels")
+
 message(STATUS "CT_INSTRUCTIONS: ${CT_INSTRUCTIONS}")
+message(STATUS "CT_CUBLAS: ${CT_CUBLAS}")
 
 set(BUILD_SHARED_LIBS ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -102,6 +108,26 @@ if (APPLE)
         target_compile_definitions(ctransformers PRIVATE GGML_USE_ACCELERATE)
     else()
         message(WARNING "Accelerate framework not found")
+    endif()
+endif()
+
+if (CT_CUBLAS)
+    find_package(CUDAToolkit)
+    if (CUDAToolkit_FOUND)
+        message(STATUS "cuBLAS found")
+        enable_language(CUDA)
+
+        target_sources(ctransformers PRIVATE models/ggml/ggml-cuda.cu)
+        target_link_libraries(ctransformers PRIVATE CUDA::cudart CUDA::cublas CUDA::cublasLt)
+
+        target_compile_definitions(ctransformers PRIVATE GGML_USE_CUBLAS)
+        target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_X=${CT_CUDA_DMMV_X})
+        target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_Y=${CT_CUDA_DMMV_Y})
+
+        set_property(TARGET ctransformers PROPERTY CUDA_ARCHITECTURES OFF)
+        set_property(TARGET ctransformers PROPERTY CUDA_SELECT_NVCC_ARCH_FLAGS "Auto")
+    else()
+        message(WARNING "cuBLAS not found")
     endif()
 endif()
 

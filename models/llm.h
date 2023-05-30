@@ -55,11 +55,12 @@ class LLM {
  public:
   virtual ~LLM(){};
 
-  bool Init(const std::string &filename, const int context_length) {
+  bool Init(const std::string &filename, const int context_length,
+            const int gpu_layers) {
     if (initialized_) {
       return false;
     }
-    if (!Load(filename, context_length)) {
+    if (!Load(filename, context_length, gpu_layers)) {
       return false;
     }
     previous_tokens_.Init(ContextLength());
@@ -147,7 +148,8 @@ class LLM {
   std::vector<float> embeddings_;
   RingBuffer previous_tokens_;
 
-  virtual bool Load(const std::string &filename, const int context_length) = 0;
+  virtual bool Load(const std::string &filename, const int context_length,
+                    const int gpu_layers) = 0;
   virtual bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
                     const int n_past) = 0;
 
@@ -193,8 +195,8 @@ class LLM {
     }                                                                      \
                                                                            \
    protected:                                                              \
-    bool Load(const std::string &filename,                                 \
-              const int context_length) override {                         \
+    bool Load(const std::string &filename, const int context_length,       \
+              const int gpu_layers) override {                             \
       if (!_name##_model_load(filename, model_, vocab_)) {                 \
         return false;                                                      \
       }                                                                    \

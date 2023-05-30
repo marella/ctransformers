@@ -1129,15 +1129,6 @@ static void llama_model_load_internal(const std::string &fname,
 
 #ifdef GGML_USE_CUBLAS
     const int n_gpu = std::min(n_gpu_layers, int(hparams.n_layer));
-
-    fprintf(stderr, "%s: [cublas] offloading %d layers to GPU\n", __func__,
-            n_gpu);
-    if (n_gpu_layers > (int)hparams.n_layer) {
-      fprintf(stderr, "%s: [cublas] offloading output layer to GPU\n",
-              __func__);
-    }
-    fprintf(stderr, "%s: [cublas] total VRAM used: %zu MB\n", __func__,
-            vram_total / 1024 / 1024);
 #else
     (void)n_gpu_layers;
 #endif

@@ -175,8 +175,9 @@ print(llm_chain.run('What is AI?'))
 | `batch_size`         | `int`       | The batch size to use for evaluating tokens.             | `8`     |
 | `threads`            | `int`       | The number of threads to use for evaluating tokens.      | `-1`    |
 | `context_length`     | `int`       | The maximum context length to use.                       | `-1`    |
+| `gpu_layers`         | `int`       | The number of layers to run on GPU.                      | `0`     |
 
-> **Note:** Currently only LLaMA models support the `context_length` parameter.
+> **Note:** Currently only LLaMA models support the `context_length` and `gpu_layers` parameters.
 
 ### <kbd>class</kbd> `AutoModelForCausalLM`
 

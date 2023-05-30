@@ -1,9 +1,18 @@
 import os
 
+kwargs = {}
 if os.environ.get('CT_WHEEL') == '1':
     from setuptools import setup
 else:
     from skbuild import setup
+
+    cmake_args = []
+    for key in ['CT_INSTRUCTIONS', 'CT_CUBLAS']:
+        value = os.environ.get(key)
+        if value:
+            cmake_args.append(f'-D{key}={value}')
+    if cmake_args:
+        kwargs['cmake_args'] = cmake_args
 
 with open('README.md') as f:
     long_description = f.read()
@@ -47,4 +56,5 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     keywords='{} transformers ai llm'.format(name),
+    **kwargs,
 )

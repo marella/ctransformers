@@ -1,4 +1,5 @@
 import inspect
+import os
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -53,6 +54,7 @@ class Config:
 
     # model
     context_length: int = -1
+    gpu_layers: int = 0
 
 
 docs = OrderedDict(
@@ -69,6 +71,7 @@ docs = OrderedDict(
     batch_size='The batch size to use for evaluating tokens.',
     threads='The number of threads to use for evaluating tokens.',
     context_length='The maximum context length to use.',
+    gpu_layers='The number of layers to run on GPU.',
 )
 
 
@@ -90,6 +93,11 @@ def get(*values):
 
 
 def load_library(path: Optional[str] = None) -> Any:
+    # https://docs.python.org/3.8/whatsnew/3.8.html#bpo-36085-whatsnew
+    # https://github.com/abetlen/llama-cpp-python/pull/225
+    if hasattr(os, 'add_dll_directory') and 'CUDA_PATH' in os.environ:
+        os.add_dll_directory(os.path.join(os.environ['CUDA_PATH'], 'bin'))
+
     path = find_library(path)
     lib = CDLL(path)
 
@@ -97,6 +105,7 @@ def load_library(path: Optional[str] = None) -> Any:
         c_char_p,  # model_path
         c_char_p,  # model_type
         c_int,  # context_length
+        c_int,  # gpu_layers
     ]
     lib.ctransformers_llm_create.restype = llm_p
 
@@ -191,6 +200,7 @@ class LLM:
             model_path.encode(),
             model_type.encode(),
             config.context_length,
+            config.gpu_layers,
         )
         if self._llm is None:
             raise RuntimeError(

@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
-                              const int context_length) {
+                              const int context_length, const int gpu_layers) {
   std::string type = model_type;
   // Remove non-alphanumeric characters from model type.
   type.erase(std::remove_if(type.begin(), type.end(),
@@ -41,7 +41,7 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
     fprintf(stderr, "Model type '%s' is not supported.\n", model_type);
     return nullptr;
   }
-  if (!llm->Init(model_path, context_length)) {
+  if (!llm->Init(model_path, context_length, gpu_layers)) {
     delete llm;
     return nullptr;
   }
