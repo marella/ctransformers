@@ -7,6 +7,7 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 - [Usage](#usage)
   - [Hugging Face Hub](#hugging-face-hub)
   - [LangChain](#langchain)
+  - [GPU](#gpu)
 - [Documentation](#documentation)
 - [License](#license)
 
@@ -29,6 +30,31 @@ More models coming soon.
 ```sh
 pip install ctransformers
 ```
+
+For GPU (CUDA) support, set environment variable `CT_CUBLAS=1` and install from source using:
+
+```sh
+CT_CUBLAS=1 pip install ctransformers --no-binary ctransformers
+```
+
+<details>
+<summary><strong>Show commands for Windows</strong></summary><br>
+
+On Windows PowerShell run:
+
+```sh
+$env:CT_CUBLAS=1
+pip install ctransformers --no-binary ctransformers
+```
+
+On Windows Command Prompt run:
+
+```sh
+set CT_CUBLAS=1
+pip install ctransformers --no-binary ctransformers
+```
+
+</details>
 
 ## Usage
 
@@ -59,7 +85,18 @@ for token in llm.generate(tokens):
     print(llm.detokenize(token))
 ```
 
-This allows you to use a custom tokenizer.
+It can be used with a custom or Hugging Face tokenizer:
+
+```py
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained('gpt2')
+
+tokens = tokenizer.encode('AI is going to')
+
+for token in llm.generate(tokens):
+    print(tokenizer.decode(token))
+```
 
 It also provides access to the low-level C API. See [Documentation](#documentation) section below.
 
@@ -87,72 +124,25 @@ To use it with your own model, add `config.json` file to your model repo specify
 }
 ```
 
-You can also specify additional parameters under `task_specific_params.text-generation`:
-
-```json
-{
-  "model_type": "gpt2",
-  "task_specific_params": {
-    "text-generation": {
-      "top_k": 40,
-      "top_p": 0.95,
-      "temperature": 0.8,
-      "repetition_penalty": 1.1,
-      "last_n_tokens": 64
-    }
-  }
-}
-```
+You can also specify additional parameters under `task_specific_params.text-generation`.
 
 See [marella/gpt-2-ggml](https://huggingface.co/marella/gpt-2-ggml/blob/main/config.json) for a minimal example and [marella/gpt-2-ggml-example](https://huggingface.co/marella/gpt-2-ggml-example/blob/main/config.json) for a full example.
 
 ### LangChain
 
-[LangChain](https://python.langchain.com/) is a framework for developing applications powered by language models. A LangChain LLM object can be created using:
+It is integrated into LangChain. See [LangChain docs](https://python.langchain.com/en/latest/integrations/ctransformers.html).
+
+### GPU
+
+> **Note:** Currently only LLaMA models have GPU support.
+
+To run some of the model layers on GPU, set the `gpu_layers` parameter:
 
 ```py
-from ctransformers.langchain import CTransformers
-
-llm = CTransformers(model='/path/to/ggml-gpt-2.bin', model_type='gpt2')
-
-print(llm('AI is going to'))
+llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-llama.bin', model_type='llama', gpu_layers=50)
 ```
 
-If you are getting `illegal instruction` error, try using `lib='avx'` or `lib='basic'`:
-
-```py
-llm = CTransformers(model='/path/to/ggml-gpt-2.bin', model_type='gpt2', lib='avx')
-```
-
-It can also be used with models hosted on the Hugging Face Hub:
-
-```py
-llm = CTransformers(model='marella/gpt-2-ggml')
-```
-
-Additional parameters can be passed using the `config` parameter:
-
-```py
-config = {'max_new_tokens': 256, 'repetition_penalty': 1.1}
-
-llm = CTransformers(model='marella/gpt-2-ggml', config=config)
-```
-
-It can be used with other LangChain modules:
-
-```py
-from langchain import PromptTemplate, LLMChain
-
-template = """Question: {question}
-
-Answer:"""
-
-prompt = PromptTemplate(template=template, input_variables=['question'])
-
-llm_chain = LLMChain(prompt=prompt, llm=llm)
-
-print(llm_chain.run('What is AI?'))
-```
+[Run in Google Colab](https://colab.research.google.com/drive/1Ihn7iPCYiqlTotpkqa1tOhUIpJBrJ1Tp)
 
 ## Documentation
 
