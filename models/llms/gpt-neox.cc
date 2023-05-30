@@ -185,9 +185,9 @@ bool gpt_neox_model_load(const std::string &fname, gpt_neox_model &model,
   // create the ggml context
   {
     struct ggml_init_params params = {
-        .mem_size = ctx_size,
-        .mem_buffer = NULL,
-        .no_alloc = false,
+        /*.mem_size   =*/ctx_size,
+        /*.mem_buffer =*/NULL,
+        /*.no_alloc   =*/false,
     };
 
     model.ctx = ggml_init(params);
@@ -449,9 +449,9 @@ bool gpt_neox_eval(const gpt_neox_model &model, const int n_threads,
   }
 
   struct ggml_init_params params = {
-      .mem_size = buf_size,
-      .mem_buffer = buf,
-      .no_alloc = false,
+      /*.mem_size   =*/buf_size,
+      /*.mem_buffer =*/buf,
+      /*.no_alloc   =*/false,
   };
 
   struct ggml_context *ctx0 = ggml_init(params);
