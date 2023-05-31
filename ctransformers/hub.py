@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from huggingface_hub import snapshot_download
+from huggingface_hub import HfApi, snapshot_download
 from huggingface_hub.utils import validate_repo_id, HFValidationError
 
 from .llm import Config, LLM
@@ -151,9 +151,23 @@ class AutoModelForCausalLM:
         repo_id: str,
         filename: Optional[str] = None,
     ) -> str:
-        allow_patterns = filename or "*.bin"
-        path = snapshot_download(repo_id=repo_id, allow_patterns=allow_patterns)
+        if not filename:
+            filename = cls._find_model_file_from_repo(repo_id=repo_id)
+        path = snapshot_download(repo_id=repo_id, allow_patterns=filename)
         return cls._find_model_path_from_dir(path, filename=filename)
+
+    @classmethod
+    def _find_model_file_from_repo(cls, repo_id: str) -> Optional[str]:
+        api = HfApi()
+        repo_info = api.repo_info(repo_id=repo_id, files_metadata=True)
+        files = [
+            (f.size, f.rfilename)
+            for f in repo_info.siblings
+            if f.rfilename.endswith(".bin")
+        ]
+        if not files:
+            raise ValueError(f"No model file found in repo '{repo_id}'")
+        return min(files)[1]
 
     @classmethod
     def _find_model_path_from_dir(
@@ -171,7 +185,7 @@ class AutoModelForCausalLM:
         files = [f for f in path.iterdir() if f.is_file() and f.name.endswith(".bin")]
 
         if len(files) == 0:
-            raise ValueError(f"No model files found in '{path}'")
+            raise ValueError(f"No model file found in directory '{path}'")
         elif len(files) > 1:
             names = "\n".join([" - " + f.name for f in files])
             raise ValueError(
