@@ -24,12 +24,12 @@ class Vector(MutableSequence):
 
     def _validate_index(self, index: int) -> None:
         if not isinstance(index, int):
-            raise TypeError('list index must be integer')
+            raise TypeError("list index must be integer")
         if not 0 <= index < self._size:
-            raise IndexError('list index out of range')
+            raise IndexError("list index out of range")
 
     def __delitem__(self, index: int) -> None:
-        raise NotImplementedError('This operation is not allowed.')
+        raise NotImplementedError("This operation is not allowed.")
 
     def insert(self, index: int, value: Any) -> None:
-        raise NotImplementedError('This operation is not allowed.')
+        raise NotImplementedError("This operation is not allowed.")

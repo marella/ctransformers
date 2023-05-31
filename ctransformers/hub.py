@@ -12,12 +12,12 @@ from .llm import Config, LLM
 def get_path_type(path: str) -> Optional[str]:
     p = Path(path)
     if p.is_file():
-        return 'file'
+        return "file"
     elif p.is_dir():
-        return 'dir'
+        return "dir"
     try:
         validate_repo_id(path)
-        return 'repo'
+        return "repo"
     except HFValidationError:
         pass
 
@@ -32,18 +32,17 @@ class AutoConfig:
         cls,
         model_path_or_repo_id: str,
         **kwargs,
-    ) -> 'AutoConfig':
+    ) -> "AutoConfig":
         path_type = get_path_type(model_path_or_repo_id)
         if not path_type:
-            raise ValueError(
-                f"Model path '{model_path_or_repo_id}' doesn't exist.")
+            raise ValueError(f"Model path '{model_path_or_repo_id}' doesn't exist.")
 
         config = Config()
         auto_config = AutoConfig(config=config)
 
-        if path_type == 'dir':
+        if path_type == "dir":
             cls._update_from_dir(model_path_or_repo_id, auto_config)
-        elif path_type == 'repo':
+        elif path_type == "repo":
             cls._update_from_repo(model_path_or_repo_id, auto_config)
 
         for k, v in kwargs.items():
@@ -59,31 +58,31 @@ class AutoConfig:
     def _update_from_repo(
         cls,
         repo_id: str,
-        auto_config: 'AutoConfig',
+        auto_config: "AutoConfig",
     ) -> None:
-        path = snapshot_download(repo_id=repo_id, allow_patterns='config.json')
+        path = snapshot_download(repo_id=repo_id, allow_patterns="config.json")
         cls._update_from_dir(path, auto_config)
 
     @classmethod
-    def _update_from_dir(cls, path: str, auto_config: 'AutoConfig') -> None:
-        path = (Path(path) / 'config.json').resolve()
+    def _update_from_dir(cls, path: str, auto_config: "AutoConfig") -> None:
+        path = (Path(path) / "config.json").resolve()
         if path.is_file():
             cls._update_from_file(path, auto_config)
 
     @classmethod
-    def _update_from_file(cls, path: str, auto_config: 'AutoConfig') -> None:
+    def _update_from_file(cls, path: str, auto_config: "AutoConfig") -> None:
         with open(path) as f:
             config = json.load(f)
 
-        auto_config.model_type = config.get('model_type')
-        params = config.get('task_specific_params', {})
-        params = params.get('text-generation', {})
+        auto_config.model_type = config.get("model_type")
+        params = config.get("task_specific_params", {})
+        params = params.get("text-generation", {})
         for name in [
-                'top_k',
-                'top_p',
-                'temperature',
-                'repetition_penalty',
-                'last_n_tokens',
+            "top_k",
+            "top_p",
+            "temperature",
+            "repetition_penalty",
+            "last_n_tokens",
         ]:
             value = params.get(name)
             if value is not None:
@@ -91,7 +90,6 @@ class AutoConfig:
 
 
 class AutoModelForCausalLM:
-
     @classmethod
     def from_pretrained(
         cls,
@@ -129,14 +127,16 @@ class AutoModelForCausalLM:
 
         path_type = get_path_type(model_path_or_repo_id)
         model_path = None
-        if path_type == 'file':
+        if path_type == "file":
             model_path = model_path_or_repo_id
-        elif path_type == 'dir':
-            model_path = cls._find_model_path_from_dir(model_path_or_repo_id,
-                                                       model_file)
-        elif path_type == 'repo':
+        elif path_type == "dir":
+            model_path = cls._find_model_path_from_dir(
+                model_path_or_repo_id, model_file
+            )
+        elif path_type == "repo":
             model_path = cls._find_model_path_from_repo(
-                model_path_or_repo_id, model_file)
+                model_path_or_repo_id, model_file
+            )
 
         return LLM(
             model_path=model_path,
@@ -151,9 +151,8 @@ class AutoModelForCausalLM:
         repo_id: str,
         filename: Optional[str] = None,
     ) -> str:
-        allow_patterns = filename or '*.bin'
-        path = snapshot_download(repo_id=repo_id,
-                                 allow_patterns=allow_patterns)
+        allow_patterns = filename or "*.bin"
+        path = snapshot_download(repo_id=repo_id, allow_patterns=allow_patterns)
         return cls._find_model_path_from_dir(path, filename=filename)
 
     @classmethod
@@ -166,19 +165,15 @@ class AutoModelForCausalLM:
         if filename:
             file = (path / filename).resolve()
             if not file.is_file():
-                raise ValueError(
-                    f"Model file '{filename}' not found in '{path}'")
+                raise ValueError(f"Model file '{filename}' not found in '{path}'")
             return str(file)
 
-        files = [
-            f for f in path.iterdir()
-            if f.is_file() and f.name.endswith('.bin')
-        ]
+        files = [f for f in path.iterdir() if f.is_file() and f.name.endswith(".bin")]
 
         if len(files) == 0:
             raise ValueError(f"No model files found in '{path}'")
         elif len(files) > 1:
-            names = '\n'.join([' - ' + f.name for f in files])
+            names = "\n".join([" - " + f.name for f in files])
             raise ValueError(
                 f"Multiple model files found in '{path}':\n\n{names}\n\n"
                 "Please specify a model file using:\n\n"

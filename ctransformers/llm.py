@@ -58,20 +58,20 @@ class Config:
 
 
 docs = OrderedDict(
-    top_k='The top-k value to use for sampling.',
-    top_p='The top-p value to use for sampling.',
-    temperature='The temperature to use for sampling.',
-    repetition_penalty='The repetition penalty to use for sampling.',
-    last_n_tokens='The number of last tokens to use for repetition penalty.',
-    seed='The seed value to use for sampling tokens.',
-    max_new_tokens='The maximum number of new tokens to generate.',
-    stop='A list of sequences to stop generation when encountered.',
-    stream='Whether to stream the generated text.',
-    reset='Whether to reset the model state before generating text.',
-    batch_size='The batch size to use for evaluating tokens.',
-    threads='The number of threads to use for evaluating tokens.',
-    context_length='The maximum context length to use.',
-    gpu_layers='The number of layers to run on GPU.',
+    top_k="The top-k value to use for sampling.",
+    top_p="The top-p value to use for sampling.",
+    temperature="The temperature to use for sampling.",
+    repetition_penalty="The repetition penalty to use for sampling.",
+    last_n_tokens="The number of last tokens to use for repetition penalty.",
+    seed="The seed value to use for sampling tokens.",
+    max_new_tokens="The maximum number of new tokens to generate.",
+    stop="A list of sequences to stop generation when encountered.",
+    stream="Whether to stream the generated text.",
+    reset="Whether to reset the model state before generating text.",
+    batch_size="The batch size to use for evaluating tokens.",
+    threads="The number of threads to use for evaluating tokens.",
+    context_length="The maximum context length to use.",
+    gpu_layers="The number of layers to run on GPU.",
 )
 
 
@@ -80,8 +80,8 @@ def doc(fn):
     for param in inspect.signature(fn).parameters:
         if param in docs:
             default = getattr(Config, param)
-            doc.append(f'{param}: {docs[param]} Default: `{default}`')
-    doc = ('\n' + ' ' * 12).join(doc)
+            doc.append(f"{param}: {docs[param]} Default: `{default}`")
+    doc = ("\n" + " " * 12).join(doc)
     fn.__doc__ = fn.__doc__.format(params=doc)
     return fn
 
@@ -95,8 +95,8 @@ def get(*values):
 def load_library(path: Optional[str] = None) -> Any:
     # https://docs.python.org/3.8/whatsnew/3.8.html#bpo-36085-whatsnew
     # https://github.com/abetlen/llama-cpp-python/pull/225
-    if hasattr(os, 'add_dll_directory') and 'CUDA_PATH' in os.environ:
-        os.add_dll_directory(os.path.join(os.environ['CUDA_PATH'], 'bin'))
+    if hasattr(os, "add_dll_directory") and "CUDA_PATH" in os.environ:
+        os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "bin"))
 
     path = find_library(path)
     lib = CDLL(path)
@@ -168,7 +168,6 @@ def load_library(path: Optional[str] = None) -> Any:
 
 
 class LLM:
-
     def __init__(
         self,
         model_path: str,
@@ -204,7 +203,8 @@ class LLM:
         )
         if self._llm is None:
             raise RuntimeError(
-                f"Failed to create LLM '{model_type}' from '{model_path}'.")
+                f"Failed to create LLM '{model_type}' from '{model_path}'."
+            )
 
     @property
     def model_path(self) -> str:
@@ -224,18 +224,22 @@ class LLM:
     @property
     def logits(self) -> List[float]:
         """The unnormalized log probabilities."""
-        return Vector(self.ctransformers_llm_logits_data(),
-                      self.ctransformers_llm_logits_size())
+        return Vector(
+            self.ctransformers_llm_logits_data(),
+            self.ctransformers_llm_logits_size(),
+        )
 
     @property
     def embeddings(self) -> List[float]:
         """The input embeddings."""
-        return Vector(self.ctransformers_llm_embeddings_data(),
-                      self.ctransformers_llm_embeddings_size())
+        return Vector(
+            self.ctransformers_llm_embeddings_data(),
+            self.ctransformers_llm_embeddings_size(),
+        )
 
     def __getattr__(self, name: str) -> Callable:
         lib, llm = self._lib, self._llm
-        if name.startswith('ctransformers_llm_') and hasattr(lib, name):
+        if name.startswith("ctransformers_llm_") and hasattr(lib, name):
             return partial(getattr(lib, name), llm)
         raise AttributeError(f"'LLM' object has no attribute '{name}'")
 
@@ -267,7 +271,7 @@ class LLM:
         for token in tokens:
             text = self.ctransformers_llm_detokenize(token)
             texts.append(text.decode())
-        return ''.join(texts)
+        return "".join(texts)
 
     def is_eos_token(self, token: int) -> bool:
         """Checks if a token is an end-of-sequence token.
@@ -300,10 +304,14 @@ class LLM:
 
         n_tokens = len(tokens)
         tokens = (c_int * n_tokens)(*tokens)
-        status = self.ctransformers_llm_batch_eval(tokens, n_tokens,
-                                                   batch_size, threads)
+        status = self.ctransformers_llm_batch_eval(
+            tokens,
+            n_tokens,
+            batch_size,
+            threads,
+        )
         if not status:
-            raise RuntimeError('Failed to evaluate tokens.')
+            raise RuntimeError("Failed to evaluate tokens.")
 
     @doc
     def sample(
@@ -418,20 +426,20 @@ class LLM:
 
         tokens = self.tokenize(prompt)
 
-        stop_regex = re.compile('|'.join(map(re.escape, stop)))
+        stop_regex = re.compile("|".join(map(re.escape, stop)))
         count = 0
-        text = ''
+        text = ""
         for token in self.generate(
-                tokens,
-                top_k=top_k,
-                top_p=top_p,
-                temperature=temperature,
-                repetition_penalty=repetition_penalty,
-                last_n_tokens=last_n_tokens,
-                seed=seed,
-                batch_size=batch_size,
-                threads=threads,
-                reset=reset,
+            tokens,
+            top_k=top_k,
+            top_p=top_p,
+            temperature=temperature,
+            repetition_penalty=repetition_penalty,
+            last_n_tokens=last_n_tokens,
+            seed=seed,
+            batch_size=batch_size,
+            threads=threads,
+            reset=reset,
         ):
             text += self.detokenize([token])
 
@@ -441,7 +449,7 @@ class LLM:
             if stop:
                 match = stop_regex.search(text)
                 if match:
-                    text = text[:match.start()]
+                    text = text[: match.start()]
                     break
 
             # Avoid sending the longest suffix of text which is also a prefix
@@ -512,7 +520,7 @@ class LLM:
         )
         if stream:
             return text
-        return ''.join(text)
+        return "".join(text)
 
     @doc
     def embed(
