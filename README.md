@@ -2,6 +2,8 @@
 
 Python bindings for the Transformer models implemented in C/C++ using [GGML](https://github.com/ggerganov/ggml) library.
 
+> Also see [ChatDocs](https://github.com/marella/chatdocs)
+
 - [Supported Models](#supported-models)
 - [Installation](#installation)
 - [Usage](#usage)
