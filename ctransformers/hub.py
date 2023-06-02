@@ -31,6 +31,7 @@ class AutoConfig:
     def from_pretrained(
         cls,
         model_path_or_repo_id: str,
+        local_files_only: bool = False,
         **kwargs,
     ) -> "AutoConfig":
         path_type = get_path_type(model_path_or_repo_id)
@@ -43,7 +44,11 @@ class AutoConfig:
         if path_type == "dir":
             cls._update_from_dir(model_path_or_repo_id, auto_config)
         elif path_type == "repo":
-            cls._update_from_repo(model_path_or_repo_id, auto_config)
+            cls._update_from_repo(
+                model_path_or_repo_id,
+                auto_config,
+                local_files_only=local_files_only,
+            )
 
         for k, v in kwargs.items():
             if not hasattr(config, k):
@@ -59,8 +64,13 @@ class AutoConfig:
         cls,
         repo_id: str,
         auto_config: "AutoConfig",
+        local_files_only: bool,
     ) -> None:
-        path = snapshot_download(repo_id=repo_id, allow_patterns="config.json")
+        path = snapshot_download(
+            repo_id=repo_id,
+            allow_patterns="config.json",
+            local_files_only=local_files_only,
+        )
         cls._update_from_dir(path, auto_config)
 
     @classmethod
@@ -99,6 +109,7 @@ class AutoModelForCausalLM:
         model_file: Optional[str] = None,
         config: Optional[AutoConfig] = None,
         lib: Optional[str] = None,
+        local_files_only: bool = False,
         **kwargs,
     ) -> LLM:
         """Loads the language model from a local file or remote repo.
@@ -110,12 +121,15 @@ class AutoModelForCausalLM:
             model_file: The name of the model file in repo or directory.
             config: `AutoConfig` object.
             lib: The path to a shared library or one of `avx2`, `avx`, `basic`.
+            local_files_only: Whether or not to only look at local files
+            (i.e., do not try to download the model).
 
         Returns:
             `LLM` object.
         """
         config = config or AutoConfig.from_pretrained(
             model_path_or_repo_id,
+            local_files_only=local_files_only,
             **kwargs,
         )
         model_type = model_type or config.model_type
@@ -135,7 +149,9 @@ class AutoModelForCausalLM:
             )
         elif path_type == "repo":
             model_path = cls._find_model_path_from_repo(
-                model_path_or_repo_id, model_file
+                model_path_or_repo_id,
+                model_file,
+                local_files_only=local_files_only,
             )
 
         return LLM(
@@ -149,11 +165,17 @@ class AutoModelForCausalLM:
     def _find_model_path_from_repo(
         cls,
         repo_id: str,
-        filename: Optional[str] = None,
+        filename: Optional[str],
+        local_files_only: bool,
     ) -> str:
-        if not filename:
+        if not filename and not local_files_only:
             filename = cls._find_model_file_from_repo(repo_id=repo_id)
-        path = snapshot_download(repo_id=repo_id, allow_patterns=filename)
+        allow_patterns = filename or "*.bin"
+        path = snapshot_download(
+            repo_id=repo_id,
+            allow_patterns=allow_patterns,
+            local_files_only=local_files_only,
+        )
         return cls._find_model_path_from_dir(path, filename=filename)
 
     @classmethod
@@ -182,16 +204,12 @@ class AutoModelForCausalLM:
                 raise ValueError(f"Model file '{filename}' not found in '{path}'")
             return str(file)
 
-        files = [f for f in path.iterdir() if f.is_file() and f.name.endswith(".bin")]
-
-        if len(files) == 0:
+        files = [
+            (f.stat().st_size, f)
+            for f in path.iterdir()
+            if f.is_file() and f.name.endswith(".bin")
+        ]
+        if not files:
             raise ValueError(f"No model file found in directory '{path}'")
-        elif len(files) > 1:
-            names = "\n".join([" - " + f.name for f in files])
-            raise ValueError(
-                f"Multiple model files found in '{path}':\n\n{names}\n\n"
-                "Please specify a model file using:\n\n"
-                "  AutoModelForCausalLM.from_pretrained(..., model_file='...')\n\n"
-            )
-
-        return str(files[0].resolve())
+        file = min(files)[1]
+        return str(file.resolve())

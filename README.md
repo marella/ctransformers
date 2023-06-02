@@ -182,6 +182,7 @@ from_pretrained(
     model_file: Optional[str] = None,
     config: Optional[ctransformers.hub.AutoConfig] = None,
     lib: Optional[str] = None,
+    local_files_only: bool = False,
     **kwargs
 ) → LLM
 ```
@@ -195,6 +196,7 @@ Loads the language model from a local file or remote repo.
 - <b>`model_file`</b>: The name of the model file in repo or directory.
 - <b>`config`</b>: `AutoConfig` object.
 - <b>`lib`</b>: The path to a shared library or one of `avx2`, `avx`, `basic`.
+- <b>`local_files_only`</b>: Whether or not to only look at local files (i.e., do not try to download the model).
 
 **Returns:**
 `LLM` object.
