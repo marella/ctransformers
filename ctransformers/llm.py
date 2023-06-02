@@ -270,7 +270,7 @@ class LLM:
         texts = []
         for token in tokens:
             text = self.ctransformers_llm_detokenize(token)
-            texts.append(text.decode())
+            texts.append(text.decode(errors="ignore"))
         return "".join(texts)
 
     def is_eos_token(self, token: int) -> bool:
