@@ -4,7 +4,6 @@
 
 // no defaults for now
 struct mpt_hparams {
-  int32_t n_ctx = 4096;
   int32_t d_model = 0;
   int32_t max_seq_len = 0;
   int32_t n_heads = 0;
@@ -13,6 +12,7 @@ struct mpt_hparams {
   float alibi_bias_max = 0;
   float clip_qkv = 0;
   int32_t ftype = 0;
+  int32_t n_ctx = 2048;
 };
 
 struct mpt_layer {
@@ -80,6 +80,8 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
     fin.read((char *)&hparams.clip_qkv, sizeof(hparams.clip_qkv));
     fin.read((char *)&hparams.ftype, sizeof(hparams.ftype));
 
+    hparams.n_ctx = std::min(hparams.max_seq_len, hparams.n_ctx);
+
     const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
 
     hparams.ftype %= GGML_QNT_VERSION_FACTOR;
@@ -100,6 +102,13 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
       fin.read((char *)buf.data(), len);
       word.assign(buf.data(), len);
 
+      // Convert token from utf-8
+      std::wstring word_multibytes = convert_to_wstring(word);
+      word.resize(word_multibytes.size());
+      for (int w = 0; w < (int)word_multibytes.size(); w++) {
+        word[w] = uint8_t(word_multibytes[w]);
+      }
+
       vocab.token_to_id[word] = i;
       vocab.id_to_token[i] = word;
     }
@@ -119,10 +128,10 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
 
   size_t ctx_size = 0;
 
-  {
-    const auto &hparams = model.hparams;
+  const auto &hparams = model.hparams;
+  const size_t n_ctx = hparams.n_ctx;
 
-    const int32_t n_ctx = hparams.n_ctx;
+  {
     const size_t n_embd = hparams.d_model;
     const size_t n_layer = hparams.n_layers;
     const size_t n_vocab = hparams.n_vocab;
@@ -215,7 +224,6 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
   {
     const auto &hparams = model.hparams;
 
-    const int32_t n_ctx = hparams.n_ctx;
     const size_t n_embd = hparams.d_model;
     const size_t n_layer = hparams.n_layers;
 
@@ -319,15 +327,16 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
 bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
               const std::vector<gpt_vocab::id> &embd_inp,
               std::vector<float> &embd_w, size_t &mem_per_token) {
+  const bool logits_all = false;
   const int N = embd_inp.size();
 
   const auto &hparams = model.hparams;
 
-  const int32_t n_ctx = hparams.n_ctx;
   const int n_embd = hparams.d_model;
   const int n_layer = hparams.n_layers;
   const int n_head = hparams.n_heads;
   const int n_vocab = hparams.n_vocab;
+  const int n_ctx = hparams.n_ctx;
 
   static size_t buf_size = 256u * 1024 * 1024;
   static void *buf = malloc(buf_size);
@@ -561,10 +570,17 @@ bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
   // ggml_graph_dump_dot(&gf, NULL, "mpt-model.dot");
   // }
 
-  // return result for just the last token
-  embd_w.resize(n_vocab);
-  memcpy(embd_w.data(), (float *)ggml_get_data(inpL) + (n_vocab * (N - 1)),
-         sizeof(float) * n_vocab);
+  if (logits_all) {
+    // return result for all tokens
+    embd_w.resize(n_vocab * N);
+    memcpy(embd_w.data(), (float *)ggml_get_data(inpL),
+           sizeof(float) * n_vocab * N);
+  } else {
+    // return result for just the last token
+    embd_w.resize(n_vocab);
+    memcpy(embd_w.data(), (float *)ggml_get_data(inpL) + (n_vocab * (N - 1)),
+           sizeof(float) * n_vocab);
+  }
 
   if (mem_per_token == 0) {
     mem_per_token = ggml_used_mem(ctx0) / N;
