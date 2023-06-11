@@ -118,9 +118,18 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
 
       vocab.token_to_id[word] = i;
       vocab.id_to_token[i] = word;
+    }
 
-      // if (i < 10) fprintf(stderr, "%.s: vocab[%d] = '%s'\n", __func__, i,
-      // word.c_str());
+    // Add StarChat special tokens.
+    for (const std::string &token : {
+             "<|system|>",
+             "<|user|>",
+             "<|assistant|>",
+             "<|end|>",
+         }) {
+      if (vocab.token_to_id.find(token) != vocab.token_to_id.end()) {
+        vocab.add_special_token(token);
+      }
     }
   }
 

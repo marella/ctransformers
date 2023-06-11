@@ -15,17 +15,15 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 
 ## Supported Models
 
-| Models             | Model Type  |
-| :----------------- | ----------- |
-| GPT-2              | `gpt2`      |
-| GPT-J, GPT4All-J   | `gptj`      |
-| GPT-NeoX, StableLM | `gpt_neox`  |
-| LLaMA              | `llama`     |
-| MPT                | `mpt`       |
-| Dolly V2           | `dolly-v2`  |
-| StarCoder          | `starcoder` |
-
-More models coming soon.
+| Models              | Model Type  |
+| :------------------ | ----------- |
+| GPT-2               | `gpt2`      |
+| GPT-J, GPT4All-J    | `gptj`      |
+| GPT-NeoX, StableLM  | `gpt_neox`  |
+| LLaMA               | `llama`     |
+| MPT                 | `mpt`       |
+| Dolly V2            | `dolly-v2`  |
+| StarCoder, StarChat | `starcoder` |
 
 ## Installation
 

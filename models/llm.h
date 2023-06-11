@@ -127,9 +127,10 @@ class LLM {
     if (token == EosToken()) {
       return true;
     }
-    // Handle special tokens in Dolly V2.
+    // Handle special tokens in StarChat and Dolly V2.
     if (!vocab_.special_tokens.empty()) {
-      return Detokenize(token) == "### End";
+      const std::string &text = Detokenize(token);
+      return text == "<|end|>" || text == "### End";
     }
     return false;
   }
