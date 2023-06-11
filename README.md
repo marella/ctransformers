@@ -233,9 +233,21 @@ The config object.
 
 ---
 
+##### <kbd>property</kbd> LLM.context_length
+
+The context length of model.
+
+---
+
 ##### <kbd>property</kbd> LLM.embeddings
 
 The input embeddings.
+
+---
+
+##### <kbd>property</kbd> LLM.eos_token_id
+
+The end-of-sequence token.
 
 ---
 
@@ -254,6 +266,12 @@ The path to the model file.
 ##### <kbd>property</kbd> LLM.model_type
 
 The model type.
+
+---
+
+##### <kbd>property</kbd> LLM.vocab_size
+
+The number of tokens in vocabulary.
 
 ---
 

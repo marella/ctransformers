@@ -131,6 +131,15 @@ def load_library(path: Optional[str] = None) -> Any:
     ]
     lib.ctransformers_llm_is_eos_token.restype = c_bool
 
+    lib.ctransformers_llm_eos_token_id.argtypes = [llm_p]
+    lib.ctransformers_llm_eos_token_id.restype = c_int
+
+    lib.ctransformers_llm_vocab_size.argtypes = [llm_p]
+    lib.ctransformers_llm_vocab_size.restype = c_int
+
+    lib.ctransformers_llm_context_length.argtypes = [llm_p]
+    lib.ctransformers_llm_context_length.restype = c_int
+
     lib.ctransformers_llm_batch_eval.argtypes = [
         llm_p,
         c_int_p,  # tokens
@@ -220,6 +229,21 @@ class LLM:
     def config(self) -> Config:
         """The config object."""
         return self._config
+
+    @property
+    def eos_token_id(self) -> int:
+        """The end-of-sequence token."""
+        return self.ctransformers_llm_eos_token_id()
+
+    @property
+    def vocab_size(self) -> int:
+        """The number of tokens in vocabulary."""
+        return self.ctransformers_llm_vocab_size()
+
+    @property
+    def context_length(self) -> int:
+        """The context length of model."""
+        return self.ctransformers_llm_context_length()
 
     @property
     def logits(self) -> List[float]:

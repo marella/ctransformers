@@ -14,3 +14,7 @@ class TestModel:
         assert logits[token] == llm.logits[token] == value - 1
         llm.logits[token] *= 2
         assert logits[token] == llm.logits[token] == (value - 1) * 2
+
+        assert llm.eos_token_id == 50256
+        assert llm.vocab_size == 50257
+        assert llm.context_length == 1024

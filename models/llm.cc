@@ -64,6 +64,12 @@ bool ctransformers_llm_is_eos_token(LLM* llm, const int token) {
   return llm->IsEosToken(token);
 }
 
+int ctransformers_llm_eos_token_id(LLM* llm) { return llm->EosToken(); }
+
+int ctransformers_llm_vocab_size(LLM* llm) { return llm->VocabSize(); }
+
+int ctransformers_llm_context_length(LLM* llm) { return llm->ContextLength(); }
+
 bool ctransformers_llm_batch_eval(LLM* llm, const int* tokens,
                                   const int n_tokens, const int batch_size,
                                   const int threads) {

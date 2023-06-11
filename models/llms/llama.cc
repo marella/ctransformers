@@ -27,6 +27,10 @@ class llama_llm : public LLM {
     return token == EosToken();
   }
 
+  gpt_vocab::id EosToken() const override { return llama_token_eos(); }
+
+  int VocabSize() const override { return llama_n_vocab(ctx_); }
+
   std::vector<float> &Logits() override { return ctx_->logits; }
 
   const std::vector<float> &Embeddings() const override {
@@ -101,10 +105,6 @@ class llama_llm : public LLM {
         llama_eval(ctx_, tokens.data(), tokens.size(), n_past, threads);
     return status == 0;
   }
-
-  gpt_vocab::id EosToken() const override { return llama_token_eos(); }
-
-  int VocabSize() const override { return llama_n_vocab(ctx_); }
 
  private:
   llama_context *ctx_ = nullptr;

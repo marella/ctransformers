@@ -134,6 +134,18 @@ class LLM {
     return false;
   }
 
+  virtual gpt_vocab::id EosToken() const {
+    const auto it = vocab_.token_to_id.find("<|endoftext|>");
+    if (it != vocab_.token_to_id.end()) {
+      return it->second;
+    }
+    return 0;
+  }
+
+  virtual int VocabSize() const { return vocab_.id_to_token.size(); }
+
+  int ContextLength() const { return n_ctx_; }
+
   void Reset() {
     logits_.clear();
     previous_tokens_.Clear();
@@ -150,20 +162,9 @@ class LLM {
 
   virtual bool Load(const std::string &filename, const int context_length,
                     const int gpu_layers) = 0;
+
   virtual bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
                     const int n_past) = 0;
-
-  virtual gpt_vocab::id EosToken() const {
-    const auto it = vocab_.token_to_id.find("<|endoftext|>");
-    if (it != vocab_.token_to_id.end()) {
-      return it->second;
-    }
-    return 0;
-  }
-
-  virtual int VocabSize() const { return vocab_.id_to_token.size(); }
-
-  int ContextLength() const { return n_ctx_; }
 
  private:
   bool initialized_ = false;
