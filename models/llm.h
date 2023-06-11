@@ -197,6 +197,9 @@ class LLM {
    protected:                                                              \
     bool Load(const std::string &filename, const int context_length,       \
               const int gpu_layers) override {                             \
+      if (context_length > 0) {                                            \
+        model_.hparams.n_ctx = context_length;                             \
+      }                                                                    \
       if (!_name##_model_load(filename, model_, vocab_)) {                 \
         return false;                                                      \
       }                                                                    \

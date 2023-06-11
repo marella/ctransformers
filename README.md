@@ -169,7 +169,7 @@ llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-llama.bin', model_type
 | `context_length`     | `int`       | The maximum context length to use.                       | `-1`    |
 | `gpu_layers`         | `int`       | The number of layers to run on GPU.                      | `0`     |
 
-> **Note:** Currently only LLaMA models support the `context_length` and `gpu_layers` parameters.
+> **Note:** Currently only LLaMA and MPT models support the `context_length` parameter and only LLaMA models support the `gpu_layers` parameter.
 
 ### <kbd>class</kbd> `AutoModelForCausalLM`
 
