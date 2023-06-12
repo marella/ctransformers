@@ -17,6 +17,9 @@ cp models/submodules/llama.cpp/ggml-cuda.h models/ggml/
 cp models/submodules/llama.cpp/ggml.c models/ggml/
 cp models/submodules/llama.cpp/ggml.h models/ggml/
 
+cp models/submodules/llama.cpp/k_quants.c models/ggml/
+cp models/submodules/llama.cpp/k_quants.h models/ggml/
+
 cp models/submodules/llama.cpp/llama-util.h models/ggml/
 cp models/submodules/llama.cpp/llama.cpp models/ggml/
 cp models/submodules/llama.cpp/llama.h models/ggml/

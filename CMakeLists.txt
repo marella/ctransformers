@@ -94,13 +94,15 @@ add_library(
     ctransformers SHARED
     models/llm.cc
     models/ggml/ggml.c
+    models/ggml/k_quants.c
 )
 
 target_include_directories(ctransformers PRIVATE models)
 target_link_libraries(ctransformers PRIVATE Threads::Threads)
 set_target_properties(ctransformers PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(ctransformers PRIVATE GGML_USE_K_QUANTS)
 
-if (APPLE) 
+if (APPLE)
     find_library(ACCELERATE_FRAMEWORK Accelerate)
     if (ACCELERATE_FRAMEWORK)
         message(STATUS "Accelerate framework found")
