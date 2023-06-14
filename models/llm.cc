@@ -96,6 +96,8 @@ int ctransformers_llm_sample(LLM* llm, const int top_k, const float top_p,
   return llm->Sample(top_k, top_p, temperature, repetition_penalty,
                      last_n_tokens, seed);
 }
+  
+void ctransformers_llm_pop_context(LLM* llm) { llm->PopContext(); }
 
 void ctransformers_llm_reset(LLM* llm) { llm->Reset(); }
 
