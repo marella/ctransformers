@@ -170,6 +170,9 @@ def load_library(path: Optional[str] = None) -> Any:
     ]
     lib.ctransformers_llm_sample.restype = c_int
 
+    lib.ctransformers_llm_pop_context.argtypes = [llm_p]
+    lib.ctransformers_llm_reset.restype = None
+    
     lib.ctransformers_llm_reset.argtypes = [llm_p]
     lib.ctransformers_llm_reset.restype = None
 
@@ -372,6 +375,10 @@ class LLM:
             last_n_tokens,
             seed,
         )
+    
+    def popcontext(self) -> None:
+        """Pops one token off the end of the context."""
+        self.ctransformers_llm_pop_context()
 
     def reset(self) -> None:
         """Resets the model state."""
