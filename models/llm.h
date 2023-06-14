@@ -19,6 +19,12 @@ class RingBuffer {
     }
     pos_ = (pos_ + 1) % capacity_;
   }
+ 
+  void Pop() {
+    if (pos_ > 0) {
+      pos_ -= 1;
+    }
+  }
 
   // Returns last n tokens.
   std::unordered_set<gpt_vocab::id> GetRecent(int n) const {
@@ -146,6 +152,10 @@ class LLM {
   virtual int VocabSize() const { return vocab_.id_to_token.size(); }
 
   int ContextLength() const { return n_ctx_; }
+ 
+  void PopContext() {
+   previous_tokens_.Pop();
+  }
 
   void Reset() {
     logits_.clear();
