@@ -102,14 +102,6 @@ class llama_llm : public LLM {
 
   bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
             const int n_past) override {
-   
-    std::cout << "npast " << n_past << std::endl;
-    std::cout << "prompt:" << std::endl;
-    for (int i = 0; i < tokens.size(); i++) {
-      std::cout << ctx_->vocab.id_to_token[tokens[i]].tok;
-    }
-    std::cout << "\n\n" << std::endl;
-   
     const int status =
         llama_eval(ctx_, tokens.data(), tokens.size(), n_past, threads);
     return status == 0;
