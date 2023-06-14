@@ -22,7 +22,7 @@ class RingBuffer {
  
   void Pop() {
     if (pos_ > 0) {
-      pos_ = (pos + capacity_ - 1) % capacity_;
+      pos_ = (pos_ + capacity_ - 1) % capacity_;
       tokens_.pop_back();
     }
   }
