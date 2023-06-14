@@ -1,4 +1,5 @@
 #include "llm.h"
+#include <iostream>
 
 // https://github.com/ggerganov/llama.cpp/blob/master/examples/main/main.cpp
 
@@ -101,6 +102,12 @@ class llama_llm : public LLM {
 
   bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
             const int n_past) override {
+   
+    std::cout << "prompt:\r\n";
+    for (int i = 0; i < tokens.size(); i++) {
+      std::cout << ctx_->vocab.id_to_token[tokens[i]].tok;
+    }
+   
     const int status =
         llama_eval(ctx_, tokens.data(), tokens.size(), n_past, threads);
     return status == 0;
