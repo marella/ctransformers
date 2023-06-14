@@ -171,7 +171,7 @@ def load_library(path: Optional[str] = None) -> Any:
     lib.ctransformers_llm_sample.restype = c_int
 
     lib.ctransformers_llm_pop_context.argtypes = [llm_p]
-    lib.ctransformers_llm_reset.restype = None
+    lib.ctransformers_llm_pop_context.restype = None
     
     lib.ctransformers_llm_reset.argtypes = [llm_p]
     lib.ctransformers_llm_reset.restype = None
