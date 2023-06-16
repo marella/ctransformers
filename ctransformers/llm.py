@@ -276,7 +276,7 @@ class LLM:
         Returns:
             The list of tokens.
         """
-        tokens = (c_int * len(text))()
+        tokens = (c_int * (len(text) + 1))()
         n_tokens = self.ctransformers_llm_tokenize(text.encode(), tokens)
         return tokens[:n_tokens]
 
