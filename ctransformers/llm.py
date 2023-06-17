@@ -25,7 +25,7 @@ from typing import (
 )
 
 from .lib import find_library
-from .utils import Vector
+from .utils import Vector, utf8_split_incomplete
 
 c_int_p = POINTER(c_int)
 c_float_p = POINTER(c_float)
@@ -280,11 +280,16 @@ class LLM:
         n_tokens = self.ctransformers_llm_tokenize(text.encode(), tokens)
         return tokens[:n_tokens]
 
-    def detokenize(self, tokens: Sequence[int]) -> str:
+    def detokenize(
+        self,
+        tokens: Sequence[int],
+        decode: bool = True,
+    ) -> Union[str, bytes]:
         """Converts a list of tokens to text.
 
         Args:
             tokens: The list of tokens.
+            decode: Whether to decode the text as UTF-8 string.
 
         Returns:
             The combined text of all tokens.
@@ -294,8 +299,11 @@ class LLM:
         texts = []
         for token in tokens:
             text = self.ctransformers_llm_detokenize(token)
-            texts.append(text.decode(errors="ignore"))
-        return "".join(texts)
+            texts.append(text)
+        texts = b"".join(texts)
+        if decode:
+            texts = texts.decode(errors="ignore")
+        return texts
 
     def is_eos_token(self, token: int) -> bool:
         """Checks if a token is an end-of-sequence token.
@@ -453,6 +461,7 @@ class LLM:
         stop_regex = re.compile("|".join(map(re.escape, stop)))
         count = 0
         text = ""
+        incomplete = b""
         for token in self.generate(
             tokens,
             top_k=top_k,
@@ -465,7 +474,10 @@ class LLM:
             threads=threads,
             reset=reset,
         ):
-            text += self.detokenize([token])
+            # Handle incomplete UTF-8 multi-byte characters.
+            incomplete += self.detokenize([token], decode=False)
+            complete, incomplete = utf8_split_incomplete(incomplete)
+            text += complete.decode(errors="ignore")
 
             # https://github.com/abetlen/llama-cpp-python/blob/1a13d76c487df1c8560132d10bda62d6e2f4fa93/llama_cpp/llama.py#L686-L706
             # Check if one of the stop sequences is part of the text.

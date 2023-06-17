@@ -276,7 +276,7 @@ The number of tokens in vocabulary.
 #### <kbd>method</kbd> `LLM.detokenize`
 
 ```python
-detokenize(tokens: Sequence[int]) → str
+detokenize(tokens: Sequence[int], decode: bool = True) → Union[str, bytes]
 ```
 
 Converts a list of tokens to text.
@@ -284,6 +284,7 @@ Converts a list of tokens to text.
 **Args:**
 
 - <b>`tokens`</b>: The list of tokens.
+- <b>`decode`</b>: Whether to decode the text as UTF-8 string.
 
 **Returns:**
 The combined text of all tokens.
