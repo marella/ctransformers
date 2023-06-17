@@ -17,8 +17,11 @@ class MockLLM(LLM):
     def generate(self, tokens, **kwargs):
         return tokens
 
-    def detokenize(self, tokens):
-        return " " + self.tokens[tokens[0]]
+    def detokenize(self, tokens, decode=True):
+        text = " " + self.tokens[tokens[0]]
+        if not decode:
+            text = text.encode()
+        return text
 
 
 class TestLLM:
