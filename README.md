@@ -130,7 +130,7 @@ See [marella/gpt-2-ggml](https://huggingface.co/marella/gpt-2-ggml/blob/main/con
 
 ### LangChain
 
-It is integrated into LangChain. See [LangChain docs](https://python.langchain.com/en/latest/integrations/ctransformers.html).
+It is integrated into LangChain. See [LangChain docs](https://python.langchain.com/docs/ecosystem/integrations/ctransformers).
 
 ### GPU
 
