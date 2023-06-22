@@ -23,3 +23,6 @@ cp models/submodules/llama.cpp/k_quants.h models/ggml/
 cp models/submodules/llama.cpp/llama-util.h models/ggml/
 cp models/submodules/llama.cpp/llama.cpp models/ggml/
 cp models/submodules/llama.cpp/llama.h models/ggml/
+
+cp models/submodules/ggllm.cpp/libfalcon.cpp models/ggml/
+cp models/submodules/ggllm.cpp/libfalcon.h models/ggml/

@@ -297,6 +297,7 @@ extern "C" {
         GGML_OP_MEAN,
         GGML_OP_REPEAT,
         GGML_OP_REPEAT_BACK,
+        GGML_OP_REPEAT2,
         GGML_OP_ABS,
         GGML_OP_SGN,
         GGML_OP_NEG,
@@ -663,6 +664,8 @@ extern "C" {
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
             struct ggml_tensor  * b);
+
+    #include "ggml/ggml-ggllm.h"
 
     GGML_API struct ggml_tensor * ggml_abs(
             struct ggml_context * ctx,

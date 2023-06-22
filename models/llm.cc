@@ -8,6 +8,9 @@
 #include "llms/mpt.cc"
 #include "llms/starcoder.cc"
 
+// Import falcon after llama.
+#include "llms/falcon.cc"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,6 +26,8 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
   LLM* llm = nullptr;
   if (type == "dollyv2") {
     llm = new dollyv2_llm;
+  } else if (type == "falcon") {
+    llm = new falcon_llm;
   } else if (type == "gpt2") {
     llm = new gpt2_llm;
   } else if (type == "gptj") {

@@ -4,3 +4,6 @@
 [submodule "models/llama.cpp"]
 	path = models/submodules/llama.cpp
 	url = https://github.com/ggerganov/llama.cpp
+[submodule "models/submodules/ggllm.cpp"]
+	path = models/submodules/ggllm.cpp
+	url = https://github.com/cmp-nct/ggllm.cpp
