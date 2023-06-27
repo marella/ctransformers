@@ -175,8 +175,6 @@ std::string replit_tokenizer_detokenize(const replit_tokenizer &tokenizer, const
 // load the model's weights from a file
 bool replit_model_load(const std::string &fname, replit_model &model, replit_tokenizer &tokenizer)
 {
-  printf("%s: loading model from '%s' - please wait ...\n", __func__, fname.c_str());
-
   auto fin = std::ifstream(fname, std::ios::binary);
   if (!fin)
   {
@@ -206,49 +204,15 @@ bool replit_model_load(const std::string &fname, replit_model &model, replit_tok
     fin.read((char *)&hparams.n_vocab, sizeof(hparams.n_vocab));
     fin.read((char *)&hparams.ftype, sizeof(hparams.ftype));
 
-    const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
+    hparams.n_ctx = std::min(hparams.max_seq_len, hparams.n_ctx);
 
-    printf("%s: d_model      = %d\n", __func__, hparams.d_model);
-    printf("%s: max_seq_len  = %d\n", __func__, hparams.max_seq_len);
-    printf("%s: n_heads      = %d\n", __func__, hparams.n_heads);
-    printf("%s: n_layers     = %d\n", __func__, hparams.n_layers);
-    printf("%s: n_vocab      = %d\n", __func__, hparams.n_vocab);
-    printf("%s: ftype        = %d\n", __func__, hparams.ftype);
-    printf("%s: qntvr        = %d\n", __func__, qntvr);
+    const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
 
     hparams.ftype %= GGML_QNT_VERSION_FACTOR;
   }
 
   // load vocab
   replit_tokenizer_load(tokenizer, fin, model.hparams.n_vocab);
-  // load vocab
-  // {
-  //   const int32_t n_vocab = model.hparams.n_vocab;
-
-  //   std::string word;
-  //   std::vector<char> buf(128);
-
-  //   for (int i = 0; i < n_vocab; i++)
-  //   {
-  //     uint32_t len;
-  //     fin.read((char *)&len, sizeof(len));
-
-  //     buf.resize(len);
-  //     fin.read((char *)buf.data(), len);
-  //     word.assign(buf.data(), len);
-
-  //     // Convert token from utf-8
-  //     std::wstring word_multibytes = convert_to_wstring(word);
-  //     word.resize(word_multibytes.size());
-  //     for (int w = 0; w < (int)word_multibytes.size(); w++)
-  //     {
-  //       word[w] = uint8_t(word_multibytes[w]);
-  //     }
-
-  //     vocab.token_to_id[word] = i;
-  //     vocab.id_to_token[i] = word;
-  //   }
-  // }
 
   // for the big tensors, we have the option to store the data in 16-bit
   // floats or quantized in order to save memory and also to speed up the
