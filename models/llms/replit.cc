@@ -251,8 +251,6 @@ bool replit_model_load(const std::string &fname, replit_model &model, replit_tok
     ctx_size += n_ctx * n_layer * n_embd * ggml_type_sizef(GGML_TYPE_F16); // memory_v
 
     ctx_size += (1 + 6 * n_layer) * 512; // object overhead
-
-    printf("%s: ggml ctx size = %6.2f MB\n", __func__, ctx_size / (1024.0 * 1024.0));
   }
 
   // create the ggml context
@@ -325,17 +323,10 @@ bool replit_model_load(const std::string &fname, replit_model &model, replit_tok
     model.memory_v = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
 
     const size_t memory_size = ggml_nbytes(model.memory_k) + ggml_nbytes(model.memory_v);
-
-    printf("%s: memory_size = %8.2f MB, n_mem = %lld\n", __func__, memory_size / 1024.0 / 1024.0, n_mem);
   }
 
   // load weights
   {
-    int n_tensors = 0;
-    size_t total_size = 0;
-
-    printf("%s: ", __func__);
-
     while (true)
     {
       int32_t n_dims;
@@ -403,18 +394,7 @@ bool replit_model_load(const std::string &fname, replit_model &model, replit_tok
       }
 
       fin.read(reinterpret_cast<char *>(tensor->data), ggml_nbytes(tensor));
-
-      total_size += ggml_nbytes(tensor);
-      if (++n_tensors % 8 == 0)
-      {
-        printf(".");
-        fflush(stdout);
-      }
     }
-
-    printf(" done\n");
-
-    printf("%s: model size = %8.2f MB / num tensors = %d\n", __func__, total_size / 1024.0 / 1024.0, n_tensors);
   }
 
   fin.close();
