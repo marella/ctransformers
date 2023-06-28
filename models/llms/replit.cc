@@ -161,17 +161,6 @@ std::vector<gpt_vocab::id> replit_tokenizer_tokenize(const replit_tokenizer &tok
   return tokenized.first;
 }
 
-std::string replit_tokenizer_detokenize(const replit_tokenizer &tokenizer, const std::vector<gpt_vocab::id> &tokens)
-{
-  std::string text;
-  for (auto token : tokens)
-  {
-    text += tokenizer.raw_vocab.id_to_token.at(token);
-  }
-  auto denormalized_text = replace_all(text, ws_symbol, " ");
-  return denormalized_text;
-}
-
 // load the model's weights from a file
 bool replit_model_load(const std::string &fname, replit_model &model, replit_tokenizer &tokenizer)
 {
@@ -631,27 +620,29 @@ public:
     }
   }
 
-  virtual std::vector<gpt_vocab::id> Tokenize(const std::string &text) const
+  std::vector<gpt_vocab::id> Tokenize(const std::string &text) const override
   {
-    // // tokenize the prompt
+    // tokenize the prompt
     std::vector<gpt_vocab::id> embd_inp = replit_tokenizer_tokenize(replit_tokenizer_, text);
 
     return embd_inp;
   }
 
-  virtual const std::string &Detokenize(const gpt_vocab::id id) const
+  const std::string &Detokenize(const gpt_vocab::id id) const override
   {
-    token_ = replit_tokenizer_detokenize(replit_tokenizer_, {id});
 
     const auto it = replit_tokenizer_.raw_vocab.id_to_token.find(id);
     if (it == replit_tokenizer_.raw_vocab.id_to_token.end())
     {
       return kEmptyString;
     }
-    return token_;
+
+    current_word_ = replace_all(replit_tokenizer_.raw_vocab.id_to_token.at(id), ws_symbol, " ");
+
+    return current_word_;
   }
 
-  virtual bool IsEosToken(const gpt_vocab::id token) const
+  bool IsEosToken(const gpt_vocab::id token) const override
   {
     if (token == EosToken())
     {
@@ -666,7 +657,7 @@ public:
     return false;
   }
 
-  virtual gpt_vocab::id EosToken() const
+  gpt_vocab::id EosToken() const override
   {
     const auto it = replit_tokenizer_.raw_vocab.token_to_id.find("<|endoftext|>");
     if (it != replit_tokenizer_.raw_vocab.token_to_id.end())
@@ -676,12 +667,12 @@ public:
     return 0;
   }
 
-  virtual int VocabSize() const { return replit_tokenizer_.raw_vocab.id_to_token.size(); }
+  int VocabSize() const override { return replit_tokenizer_.raw_vocab.id_to_token.size(); }
 
-  virtual gpt_vocab::id Sample(const int top_k, const float top_p,
-                               const float temperature,
-                               const float repetition_penalty,
-                               int last_n_tokens, int seed) const
+  gpt_vocab::id Sample(const int top_k, const float top_p,
+                       const float temperature,
+                       const float repetition_penalty,
+                       int last_n_tokens, int seed) const override
   {
     if (logits_.empty())
     {
@@ -734,4 +725,5 @@ protected:
 
 private:
   replit_model model_;
+  mutable std::string current_word_;
 };
