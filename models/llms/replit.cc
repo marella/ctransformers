@@ -608,9 +608,6 @@ bool replit_eval(const replit_model &model, const int n_threads, const int n_pas
 
 class replit_llm : public LLM
 {
-private:
-  mutable std::string token_;
-
 public:
   virtual ~replit_llm()
   {
