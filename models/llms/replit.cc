@@ -628,15 +628,14 @@ public:
   const std::string &Detokenize(const gpt_vocab::id id) const override
   {
 
-    const auto it = replit_tokenizer_.raw_vocab.id_to_token.find(id);
-    if (it == replit_tokenizer_.raw_vocab.id_to_token.end())
+    const auto it = vocab_.id_to_token.find(id);
+    if (it == vocab_.id_to_token.end())
     {
       return kEmptyString;
     }
 
-    current_word_ = replace_all(replit_tokenizer_.raw_vocab.id_to_token.at(id), ws_symbol, " ");
-
-    return current_word_;
+    detokenized_text_ = replace_all(vocab_.id_to_token.at(id), ws_symbol, " ");
+    return detokenized_text_;
   }
 
   bool IsEosToken(const gpt_vocab::id token) const override
@@ -646,7 +645,7 @@ public:
       return true;
     }
     // Handle special tokens in StarChat and Dolly V2.
-    if (!replit_tokenizer_.raw_vocab.special_tokens.empty())
+    if (!vocab_.special_tokens.empty())
     {
       const std::string &text = Detokenize(token);
       return text == "<|end|>" || text == "### End";
@@ -656,15 +655,15 @@ public:
 
   gpt_vocab::id EosToken() const override
   {
-    const auto it = replit_tokenizer_.raw_vocab.token_to_id.find("<|endoftext|>");
-    if (it != replit_tokenizer_.raw_vocab.token_to_id.end())
+    const auto it = vocab_.token_to_id.find("<|endoftext|>");
+    if (it != vocab_.token_to_id.end())
     {
       return it->second;
     }
     return 0;
   }
 
-  int VocabSize() const override { return replit_tokenizer_.raw_vocab.id_to_token.size(); }
+  int VocabSize() const override { return vocab_.id_to_token.size(); }
 
   gpt_vocab::id Sample(const int top_k, const float top_p,
                        const float temperature,
@@ -692,7 +691,7 @@ public:
     }
 
     return gpt_sample_top_k_top_p(
-        replit_tokenizer_.raw_vocab, logits_.data() + (logits_.size() - VocabSize()), top_k, top_p,
+        vocab_, logits_.data() + (logits_.size() - VocabSize()), top_k, top_p,
         temperature, repetition_penalty, recent_tokens, rng);
   }
 
@@ -710,6 +709,7 @@ protected:
       return false;
     }
     n_ctx_ = model_.hparams.n_ctx;
+    vocab_ = replit_tokenizer_.raw_vocab;
     return true;
   }
 
@@ -722,5 +722,5 @@ protected:
 
 private:
   replit_model model_;
-  mutable std::string current_word_;
+  mutable std::string detokenized_text_;
 };
