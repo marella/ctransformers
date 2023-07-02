@@ -638,63 +638,6 @@ public:
     return detokenized_text_;
   }
 
-  bool IsEosToken(const gpt_vocab::id token) const override
-  {
-    if (token == EosToken())
-    {
-      return true;
-    }
-    // Handle special tokens in StarChat and Dolly V2.
-    if (!vocab_.special_tokens.empty())
-    {
-      const std::string &text = Detokenize(token);
-      return text == "<|end|>" || text == "### End";
-    }
-    return false;
-  }
-
-  gpt_vocab::id EosToken() const override
-  {
-    const auto it = vocab_.token_to_id.find("<|endoftext|>");
-    if (it != vocab_.token_to_id.end())
-    {
-      return it->second;
-    }
-    return 0;
-  }
-
-  int VocabSize() const override { return vocab_.id_to_token.size(); }
-
-  gpt_vocab::id Sample(const int top_k, const float top_p,
-                       const float temperature,
-                       const float repetition_penalty,
-                       int last_n_tokens, int seed) const override
-  {
-    if (logits_.empty())
-    {
-      return EosToken();
-    }
-    if (last_n_tokens < 0)
-    {
-      last_n_tokens = ContextLength();
-    }
-    if (seed < 0)
-    {
-      seed = time(nullptr);
-    }
-    std::mt19937 rng(seed);
-
-    std::unordered_set<gpt_vocab::id> recent_tokens;
-    if (repetition_penalty != 1.0f)
-    {
-      recent_tokens = previous_tokens_.GetRecent(last_n_tokens);
-    }
-
-    return gpt_sample_top_k_top_p(
-        vocab_, logits_.data() + (logits_.size() - VocabSize()), top_k, top_p,
-        temperature, repetition_penalty, recent_tokens, rng);
-  }
-
 protected:
   replit_tokenizer replit_tokenizer_;
   bool Load(const std::string &filename, const int context_length,
