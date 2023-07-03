@@ -1,4 +1,5 @@
 #include "llm.h"
+#include <iostream>
 
 // https://github.com/ggerganov/llama.cpp/blob/master/examples/main/main.cpp
 
