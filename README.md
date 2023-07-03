@@ -23,6 +23,7 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 | LLaMA                 | `llama`     |
 | MPT                   | `mpt`       |
 | Dolly V2              | `dolly-v2`  |
+| Replit                | `replit`    |
 | StarCoder, StarChat   | `starcoder` |
 | Falcon (Experimental) | `falcon`    |
 
