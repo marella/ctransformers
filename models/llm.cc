@@ -6,6 +6,7 @@
 #include "llms/gptj.cc"
 #include "llms/llama.cc"
 #include "llms/mpt.cc"
+#include "llms/replit.cc"
 #include "llms/starcoder.cc"
 
 // Import falcon after llama.
@@ -38,6 +39,8 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
     llm = new llama_llm;
   } else if (type == "mpt") {
     llm = new mpt_llm;
+  } else if (type == "replit") {
+    llm = new replit_llm;
   } else if (type == "starcoder") {
     llm = new starcoder_llm;
   }
