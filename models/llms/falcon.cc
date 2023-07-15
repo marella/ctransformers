@@ -13,7 +13,7 @@ class falcon_llm : public LLM {
   }
 
   std::vector<gpt_vocab::id> Tokenize(const std::string &text) const override {
-    return falcon_tokenize(ctx_->vocab, text, /*bos=*/false);
+    return falcon_tokenize(ctx_->vocab, text, /*bos=*/false, /*g2ws=*/true);
   }
 
   const std::string &Detokenize(const gpt_vocab::id id) const override {
@@ -51,14 +51,14 @@ class falcon_llm : public LLM {
     const float *logits = falcon_get_logits(ctx_);
     const int n_vocab = falcon_n_vocab(ctx_);
 
-    std::vector<llama_token_data> candidates;
+    std::vector<falcon_token_data> candidates;
     candidates.reserve(n_vocab);
-    for (llama_token token_id = 0; token_id < n_vocab; token_id++) {
+    for (falcon_token token_id = 0; token_id < n_vocab; token_id++) {
       candidates.emplace_back(
-          llama_token_data{token_id, logits[token_id], 0.0f});
+          falcon_token_data{token_id, logits[token_id], 0.0f});
     }
 
-    llama_token_data_array candidates_p = {
+    falcon_token_data_array candidates_p = {
         candidates.data(),
         candidates.size(),
         false,

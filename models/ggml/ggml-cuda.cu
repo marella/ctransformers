@@ -1419,6 +1419,7 @@ struct scoped_spin_lock {
 struct cuda_buffer {
     void * ptr = nullptr;
     size_t size = 0;
+    int access_count = 0;
 };
 
 static cuda_buffer g_cuda_buffer_pool[GGML_CUDA_MAX_DEVICES][MAX_CUDA_BUFFERS];
@@ -2626,3 +2627,5 @@ bool ggml_cuda_compute_forward(struct ggml_compute_params * params, struct ggml_
     func(tensor->src0, tensor->src1, tensor);
     return true;
 }
+
+#include "ggml-cuda-ggllm.cu"

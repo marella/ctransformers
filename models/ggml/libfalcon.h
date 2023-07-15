@@ -12,6 +12,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <string>
+
 #ifdef LLAMA_SHARED
 #if defined(_WIN32) && !defined(__MINGW32__)
 #ifdef LLAMA_BUILD
@@ -32,8 +34,11 @@
 #define LLAMA_FILE_MAGIC_GGML 0x67676d6cu  // 'ggml'
 #define LLAMA_FILE_MAGIC_GGSN 0x6767736eu  // 'ggsn'
 
-#define LLAMA_FILE_VERSION 3
-#define LLAMA_FILE_MAGIC LLAMA_FILE_MAGIC_GGJT
+#define FALCON_FILE_MAGIC_GGCC \
+  0x67676363u  // 'ggcc' (cmp-cnt enhancements for ggllm.cpp)
+
+#define FALCON_FILE_VERSION FALCON_FILE_VERSION_GGCC_V1
+#define FALCON_FILE_MAGIC FALCON_FILE_MAGIC_GGCC
 #define LLAMA_FILE_MAGIC_UNVERSIONED LLAMA_FILE_MAGIC_GGML
 #define LLAMA_SESSION_MAGIC LLAMA_FILE_MAGIC_GGSN
 #define LLAMA_SESSION_VERSION 1
@@ -56,6 +61,25 @@ extern "C" {
 //
 
 struct falcon_context;
+struct falcon_model;
+struct falcon_vocab;
+
+typedef int falcon_token;
+
+typedef struct falcon_token_data {
+  falcon_token id;  // token id
+  float logit;      // log-odds of the token
+  float p;          // probability of the token
+} falcon_token_data;
+
+typedef struct falcon_token_data_array {
+  falcon_token_data *data;
+  size_t size;
+  bool sorted;
+} falcon_token_data_array;
+
+typedef void (*falcon_progress_callback)(float progress, void *ctx,
+                                         const char *status);
 
 struct falcon_context_params {
   int n_ctx;         // text context
@@ -77,7 +101,7 @@ struct falcon_context_params {
   bool embedding;   // embedding mode only
 
   // called with a progress value between 0 and 1, pass NULL to disable
-  llama_progress_callback progress_callback;
+  falcon_progress_callback progress_callback;
   // context pointer passed to the progress callback
   void *progress_callback_user_data;
 };
@@ -101,6 +125,10 @@ falcon_model_quantize_default_params();
 LLAMA_API struct falcon_context *falcon_init_from_file(
     const char *path_model, struct falcon_context_params params);
 
+// prepare scratch and computation buffers
+LLAMA_API void falcon_context_set_buffers(falcon_context *ctx, int n_batch,
+                                          int n_ctx);
+LLAMA_API struct falcon_model *falcon_get_falcon_model(falcon_context *ctx);
 // Frees all allocated memory
 LLAMA_API void falcon_free(struct falcon_context *ctx);
 
@@ -144,21 +172,21 @@ LLAMA_API size_t falcon_set_state_data(struct falcon_context *ctx,
 // Save/load session file
 LLAMA_API bool falcon_load_session_file(struct falcon_context *ctx,
                                         const char *path_session,
-                                        llama_token *tokens_out,
+                                        falcon_token *tokens_out,
                                         size_t n_token_capacity,
                                         size_t *n_token_count_out);
 LLAMA_API bool falcon_save_session_file(struct falcon_context *ctx,
                                         const char *path_session,
-                                        const llama_token *tokens,
+                                        const falcon_token *tokens,
                                         size_t n_token_count);
 
 // Run the llama inference to obtain the logits and probabilities for the next
 // token. tokens + n_tokens is the provided batch of new tokens to process
 // n_past is the number of tokens to use from previous eval calls
 // Returns 0 on success
-LLAMA_API int falcon_eval(struct falcon_context *ctx, const llama_token *tokens,
-                          int n_tokens, int n_past, int n_threads,
-                          int debug_timings);
+LLAMA_API int falcon_eval(struct falcon_context *ctx,
+                          const falcon_token *tokens, int n_tokens, int n_past,
+                          int n_threads, int debug_timings);
 
 // Export a static computation graph for context of 511 and batch size of 1
 // NOTE: since this functionality is mostly for debugging and demonstration
@@ -174,7 +202,7 @@ LLAMA_API int falcon_eval_export(struct falcon_context *ctx, const char *fname);
 // been returned
 // TODO: not sure if correct
 LLAMA_API int falcon_tokenize(struct falcon_context *ctx, const char *text,
-                              llama_token *tokens, int n_max_tokens,
+                              falcon_token *tokens, int n_max_tokens,
                               bool add_bos);
 
 LLAMA_API int falcon_n_vocab(const struct falcon_context *ctx);
@@ -186,6 +214,12 @@ LLAMA_API int falcon_n_embd(const struct falcon_context *ctx);
 LLAMA_API int falcon_get_vocab(const struct falcon_context *ctx,
                                const char **strings, float *scores,
                                int capacity);
+
+// prepares a falcon_context based on a model, also allocates scratch buffers
+// based on parameters
+LLAMA_API struct falcon_context *falcon_context_prepare(
+    falcon_context_params params, falcon_model *model, std::string context_name,
+    bool verbose);
 
 // Token logits obtained from the last call to llama_eval()
 // The logits for the last token are stored in the last row
@@ -200,63 +234,80 @@ LLAMA_API float *falcon_get_embeddings(struct falcon_context *ctx);
 
 // Token Id -> String. Uses the vocabulary in the provided context
 LLAMA_API const char *falcon_token_to_str(const struct falcon_context *ctx,
-                                          llama_token token);
+                                          falcon_token token);
+typedef enum {
+  FINETUNE_UNSPECIFIED,
+  FINETUNE_NONE,
+  FINETUNE_ALPACA,
+  FINETUNE_OPENASSISTANT,
+  FINETUNE_OPENASSIST_V1,
+  FINETUNE_WIZARD,
+  FINETUNE_FALCONINSTRUCT
+} t_finetune_type;
+static const char *FINETUNE_NAME[7] = {
+    "UNSPECIFIED",   "NONE",   "ALPACA",        "OPENASSISTANT",
+    "OPENASSIST_V1", "WIZARD", "FALCONINSTRUCT"};
 
+LLAMA_API t_finetune_type falcon_detect_finetune(falcon_context *ctx,
+                                                 std::string model_path);
 // Special tokens
-LLAMA_API llama_token falcon_token_bos();
-LLAMA_API llama_token falcon_token_eos();
-LLAMA_API llama_token falcon_token_nl();
+LLAMA_API falcon_token falcon_token_bos();
+LLAMA_API falcon_token falcon_token_eos();
+LLAMA_API falcon_token falcon_token_nl();
 
 // Sampling functions
 
 /// @details Repetition penalty described in CTRL academic paper
 /// https://arxiv.org/abs/1909.05858, with negative logit fix.
 LLAMA_API void falcon_sample_repetition_penalty(
-    struct falcon_context *ctx, llama_token_data_array *candidates,
-    const llama_token *last_tokens, size_t last_tokens_size, float penalty);
+    struct falcon_context *ctx, falcon_token_data_array *candidates,
+    const falcon_token *last_tokens, size_t last_tokens_size, float penalty);
 
 /// @details Frequency and presence penalties described in OpenAI API
 /// https://platform.openai.com/docs/api-reference/parameter-details.
 LLAMA_API void falcon_sample_frequency_and_presence_penalties(
-    struct falcon_context *ctx, llama_token_data_array *candidates,
-    const llama_token *last_tokens, size_t last_tokens_size,
+    struct falcon_context *ctx, falcon_token_data_array *candidates,
+    const falcon_token *last_tokens, size_t last_tokens_size,
     float alpha_frequency, float alpha_presence);
 
 /// @details Sorts candidate tokens by their logits in descending order and
 /// calculate probabilities based on logits.
 LLAMA_API void falcon_sample_softmax(struct falcon_context *ctx,
-                                     llama_token_data_array *candidates);
+                                     falcon_token_data_array *candidates);
+// logarithmic scaled softmax (just a log after softmax)
+LLAMA_API void falcon_sample_log_softmax(struct falcon_context *ctx,
+                                         falcon_token_data_array *candidates);
 
 /// @details Top-K sampling described in academic paper "The Curious Case of
 /// Neural Text Degeneration" https://arxiv.org/abs/1904.09751
 LLAMA_API void falcon_sample_top_k(struct falcon_context *ctx,
-                                   llama_token_data_array *candidates, int k,
+                                   falcon_token_data_array *candidates, int k,
                                    size_t min_keep);
 
 /// @details Nucleus sampling described in academic paper "The Curious Case of
 /// Neural Text Degeneration" https://arxiv.org/abs/1904.09751
 LLAMA_API void falcon_sample_top_p(struct falcon_context *ctx,
-                                   llama_token_data_array *candidates, float p,
+                                   falcon_token_data_array *candidates, float p,
                                    size_t min_keep);
 
 /// @details Tail Free Sampling described in
 /// https://www.trentonbricken.com/Tail-Free-Sampling/.
 LLAMA_API void falcon_sample_tail_free(struct falcon_context *ctx,
-                                       llama_token_data_array *candidates,
+                                       falcon_token_data_array *candidates,
                                        float z, size_t min_keep);
 
 /// @details Locally Typical Sampling implementation described in the paper
 /// https://arxiv.org/abs/2202.00666.
 LLAMA_API void falcon_sample_typical(struct falcon_context *ctx,
-                                     llama_token_data_array *candidates,
+                                     falcon_token_data_array *candidates,
                                      float p, size_t min_keep);
 LLAMA_API void falcon_sample_temperature(struct falcon_context *ctx,
-                                         llama_token_data_array *candidates,
+                                         falcon_token_data_array *candidates,
                                          float temp);
 
 /// @details Mirostat 1.0 algorithm described in the paper
 /// https://arxiv.org/abs/2007.14966. Uses tokens instead of words.
-/// @param candidates A vector of `llama_token_data` containing the candidate
+/// @param candidates A vector of `falcon_token_data` containing the candidate
 /// tokens, their probabilities (p), and log-odds (logit) for the current
 /// position in the generated text.
 /// @param tau  The target cross-entropy (or surprise) value you want to achieve
@@ -275,13 +326,13 @@ LLAMA_API void falcon_sample_temperature(struct falcon_context *ctx,
 /// @param mu Maximum cross-entropy. This value is initialized to be twice the
 /// target cross-entropy (`2 * tau`) and is updated in the algorithm based on
 /// the error between the target and observed surprisal.
-LLAMA_API llama_token falcon_sample_token_mirostat(
-    struct falcon_context *ctx, llama_token_data_array *candidates, float tau,
+LLAMA_API falcon_token falcon_sample_token_mirostat(
+    struct falcon_context *ctx, falcon_token_data_array *candidates, float tau,
     float eta, int m, float *mu);
 
 /// @details Mirostat 2.0 algorithm described in the paper
 /// https://arxiv.org/abs/2007.14966. Uses tokens instead of words.
-/// @param candidates A vector of `llama_token_data` containing the candidate
+/// @param candidates A vector of `falcon_token_data` containing the candidate
 /// tokens, their probabilities (p), and log-odds (logit) for the current
 /// position in the generated text.
 /// @param tau  The target cross-entropy (or surprise) value you want to achieve
@@ -295,25 +346,25 @@ LLAMA_API llama_token falcon_sample_token_mirostat(
 /// @param mu Maximum cross-entropy. This value is initialized to be twice the
 /// target cross-entropy (`2 * tau`) and is updated in the algorithm based on
 /// the error between the target and observed surprisal.
-LLAMA_API llama_token falcon_sample_token_mirostat_v2(
-    struct falcon_context *ctx, llama_token_data_array *candidates, float tau,
+LLAMA_API falcon_token falcon_sample_token_mirostat_v2(
+    struct falcon_context *ctx, falcon_token_data_array *candidates, float tau,
     float eta, float *mu);
 
 /// @details Selects the token with the highest probability.
-LLAMA_API llama_token falcon_sample_token_greedy(
-    struct falcon_context *ctx, llama_token_data_array *candidates);
+LLAMA_API falcon_token falcon_sample_token_greedy(
+    struct falcon_context *ctx, falcon_token_data_array *candidates);
 
 /// @details Randomly selects a token from the candidates based on their
 /// probabilities.
-LLAMA_API llama_token falcon_sample_token(struct falcon_context *ctx,
-                                          llama_token_data_array *candidates);
+LLAMA_API falcon_token falcon_sample_token(struct falcon_context *ctx,
+                                           falcon_token_data_array *candidates);
 
 // Performance information
 LLAMA_API void falcon_print_timings(struct falcon_context *ctx);
 LLAMA_API void falcon_reset_timings(struct falcon_context *ctx);
 
 // Print system information
-LLAMA_API const char *falcon_print_system_info(void);
+LLAMA_API const char *falcon_print_system_info(int n_threads, int n_cores);
 
 #ifdef __cplusplus
 }

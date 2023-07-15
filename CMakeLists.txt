@@ -96,6 +96,7 @@ add_library(
     models/llm.cc
     models/ggml/ggml.c
     models/ggml/k_quants.c
+    models/ggml/cmpnct_unicode.cpp
 )
 
 target_include_directories(ctransformers PRIVATE models)
