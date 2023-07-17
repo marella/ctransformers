@@ -33,31 +33,6 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 pip install ctransformers
 ```
 
-For GPU (CUDA) support, set environment variable `CT_CUBLAS=1` and install from source using:
-
-```sh
-CT_CUBLAS=1 pip install ctransformers --no-binary ctransformers
-```
-
-<details>
-<summary><strong>Show commands for Windows</strong></summary><br>
-
-On Windows PowerShell run:
-
-```sh
-$env:CT_CUBLAS=1
-pip install ctransformers --no-binary ctransformers
-```
-
-On Windows Command Prompt run:
-
-```sh
-set CT_CUBLAS=1
-pip install ctransformers --no-binary ctransformers
-```
-
-</details>
-
 ## Usage
 
 It provides a unified interface for all models:
@@ -136,13 +111,43 @@ It is integrated into LangChain. See [LangChain docs](https://python.langchain.c
 
 ### GPU
 
-> **Note:** Currently only LLaMA models have GPU support.
+> **Note:** Currently only LLaMA and Falcon models have GPU support.
 
-To run some of the model layers on GPU, set the `gpu_layers` parameter:
+To run some of the model layers on GPU (CUDA), set the `gpu_layers` parameter:
 
 ```py
 llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-llama.bin', model_type='llama', gpu_layers=50)
 ```
+
+Make sure you have installed [CUDA 12](https://developer.nvidia.com/cuda-downloads) and latest [NVIDIA Drivers](https://www.nvidia.com/download/index.aspx).
+
+<details>
+<summary><strong>Show instructions for CUDA 11</strong></summary><br>
+
+To use with CUDA 11, reinstall the `ctransformers` package using:
+
+```sh
+pip uninstall ctransformers --yes
+CT_CUBLAS=1 pip install ctransformers --no-binary ctransformers
+```
+
+On Windows PowerShell run:
+
+```sh
+$env:CT_CUBLAS=1
+pip uninstall ctransformers --yes
+pip install ctransformers --no-binary ctransformers
+```
+
+On Windows Command Prompt run:
+
+```sh
+set CT_CUBLAS=1
+pip uninstall ctransformers --yes
+pip install ctransformers --no-binary ctransformers
+```
+
+</details>
 
 [Run in Google Colab](https://colab.research.google.com/drive/1Ihn7iPCYiqlTotpkqa1tOhUIpJBrJ1Tp)
 
@@ -169,7 +174,7 @@ llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-llama.bin', model_type
 | `context_length`     | `int`       | The maximum context length to use.                       | `-1`    |
 | `gpu_layers`         | `int`       | The number of layers to run on GPU.                      | `0`     |
 
-> **Note:** Currently only LLaMA and MPT models support the `context_length` parameter and only LLaMA models support the `gpu_layers` parameter.
+> **Note:** Currently only LLaMA, MPT, Falcon models support the `context_length` parameter and only LLaMA, Falcon models support the `gpu_layers` parameter.
 
 ### <kbd>class</kbd> `AutoModelForCausalLM`
 
@@ -305,7 +310,7 @@ embed(
 
 Computes embeddings for a text or list of tokens.
 
-> **Note:** Currently only LLaMA models support embeddings.
+> **Note:** Currently only LLaMA and Falcon models support embeddings.
 
 **Args:**
 
