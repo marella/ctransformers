@@ -13,7 +13,7 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.os }} ${{ matrix.instructions }}
+    name: ${{ matrix.os }} ${{ matrix.cublas == 'ON' && 'cuda' || matrix.instructions }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -27,17 +27,32 @@ jobs:
           - avx2
           - avx
           - basic
+        cublas:
+          - OFF
+        include:
+          - os: ubuntu-20.04
+            instructions: avx2
+            cublas: ON
+          - os: windows-latest
+            instructions: avx2
+            cublas: ON
 
     steps:
       - uses: actions/checkout@v3
 
+      - if: ${{ matrix.cublas == 'ON' }}
+        uses: Jimver/cuda-toolkit@v0.2.11
+        id: cuda-toolkit
+        with:
+          cuda: '12.1.0'
+
       - name: Build
         run: |
-          cmake -B build -DCT_INSTRUCTIONS=${{ matrix.instructions }}
+          cmake -B build -DCT_INSTRUCTIONS=${{ matrix.instructions }} -DCT_CUBLAS=${{ matrix.cublas }}
           cmake --build build --config Release
 
           mkdir tmp
-          mv build/lib tmp/${{ matrix.instructions }}
+          mv build/lib tmp/${{ matrix.cublas == 'ON' && 'cuda' || matrix.instructions }}
 
       - uses: actions/upload-artifact@v3
         with:
