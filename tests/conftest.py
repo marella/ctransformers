@@ -5,7 +5,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--lib",
         action="store",
-        choices=("avx2", "avx", "basic"),
+        choices=("avx2", "avx", "basic", "cuda"),
         required=True,
     )
 
