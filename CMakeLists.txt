@@ -8,8 +8,11 @@ set(CT_CUDA_DMMV_X "32" CACHE STRING "x stride for dmmv CUDA kernels")
 set(CT_CUDA_DMMV_Y "1" CACHE STRING "y block size for dmmv CUDA kernels")
 set(CT_CUDA_KQUANTS_ITER "2" CACHE STRING "iters/thread per block for Q2_K/Q6_K")
 
+option(CT_METAL "Use Metal" OFF)
+
 message(STATUS "CT_INSTRUCTIONS: ${CT_INSTRUCTIONS}")
 message(STATUS "CT_CUBLAS: ${CT_CUBLAS}")
+message(STATUS "CT_METAL: ${CT_METAL}")
 
 set(BUILD_SHARED_LIBS ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -136,10 +139,33 @@ if (CT_CUBLAS)
     endif()
 endif()
 
+if (CT_METAL)
+    find_library(FOUNDATION_LIBRARY         Foundation              REQUIRED)
+    find_library(METAL_FRAMEWORK            Metal                   REQUIRED)
+    find_library(METALKIT_FRAMEWORK         MetalKit                REQUIRED)
+    find_library(METALPERFORMANCE_FRAMEWORK MetalPerformanceShaders REQUIRED)
+
+    target_sources(ctransformers PRIVATE models/ggml/ggml-metal.m)
+    target_link_libraries(
+        ctransformers PRIVATE
+        ${FOUNDATION_LIBRARY}
+        ${METAL_FRAMEWORK}
+        ${METALKIT_FRAMEWORK}
+        ${METALPERFORMANCE_FRAMEWORK}
+    )
+
+    target_compile_definitions(ctransformers PRIVATE GGML_USE_METAL)
+    target_compile_definitions(ctransformers PRIVATE GGML_METAL_NDEBUG)
+
+    set_target_properties(ctransformers PROPERTIES RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml/ggml-metal.metal")
+    configure_file(models/ggml/ggml-metal.metal lib/ggml-metal.metal COPYONLY)
+endif()
+
 # scikit-build
 
 install(
     TARGETS ctransformers
     LIBRARY DESTINATION ctransformers/lib/local
     RUNTIME DESTINATION ctransformers/lib/local
+    RESOURCE DESTINATION ctransformers/lib/local
 )

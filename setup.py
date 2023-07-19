@@ -7,7 +7,7 @@ else:
     from skbuild import setup
 
     cmake_args = []
-    for key in ["CT_INSTRUCTIONS", "CT_CUBLAS"]:
+    for key in ["CT_INSTRUCTIONS", "CT_CUBLAS", "CT_METAL"]:
         value = os.environ.get(key)
         if value:
             cmake_args.append(f"-D{key}={value}")

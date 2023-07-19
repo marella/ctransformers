@@ -3770,6 +3770,8 @@ struct falcon_context* falcon_context_prepare(falcon_context_params params,
       data_size = ggml_get_mem_size(ctx->model.ctx);
     }
 
+    const size_t max_size = ggml_get_max_tensor_size(ctx->model.ctx);
+
 #define LLAMA_METAL_CHECK_BUF(result)                        \
   if (!(result)) {                                           \
     fprintf(stderr, "%s: failed to add buffer\n", __func__); \
@@ -3777,20 +3779,22 @@ struct falcon_context* falcon_context_prepare(falcon_context_params params,
     return NULL;                                             \
   }
 
-    LLAMA_METAL_CHECK_BUF(
-        ggml_metal_add_buffer(ctx->ctx_metal, "data", data_ptr, data_size));
-    LLAMA_METAL_CHECK_BUF(ggml_metal_add_buffer(
-        ctx->ctx_metal, "eval", ctx->buf_compute.addr, ctx->buf_compute.size));
+    LLAMA_METAL_CHECK_BUF(ggml_metal_add_buffer(ctx->ctx_metal, "data",
+                                                data_ptr, data_size, max_size));
 
-    LLAMA_METAL_CHECK_BUF(ggml_metal_add_buffer(ctx->ctx_metal, "kv",
-                                                ctx->model.kv_self.buf.addr,
-                                                ctx->model.kv_self.buf.size));
+    LLAMA_METAL_CHECK_BUF(ggml_metal_add_buffer(ctx->ctx_metal, "eval",
+                                                ctx->buf_compute.addr,
+                                                ctx->buf_compute.size, 0));
+    LLAMA_METAL_CHECK_BUF(
+        ggml_metal_add_buffer(ctx->ctx_metal, "kv", ctx->model.kv_self.buf.addr,
+                              ctx->model.kv_self.buf.size, 0));
+
     LLAMA_METAL_CHECK_BUF(ggml_metal_add_buffer(ctx->ctx_metal, "scr0",
                                                 ctx->buf_scratch[0].addr,
-                                                ctx->buf_scratch[0].size));
+                                                ctx->buf_scratch[0].size, 0));
     LLAMA_METAL_CHECK_BUF(ggml_metal_add_buffer(ctx->ctx_metal, "scr1",
                                                 ctx->buf_scratch[1].addr,
-                                                ctx->buf_scratch[1].size));
+                                                ctx->buf_scratch[1].size, 0));
 #undef LLAMA_METAL_CHECK_BUF
   }
 #endif

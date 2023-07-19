@@ -14,6 +14,10 @@ git submodule update --init --recursive
 cp models/submodules/llama.cpp/ggml-cuda.cu models/ggml/
 cp models/submodules/llama.cpp/ggml-cuda.h models/ggml/
 
+cp models/submodules/llama.cpp/ggml-metal.h models/ggml/
+cp models/submodules/llama.cpp/ggml-metal.m models/ggml/
+cp models/submodules/llama.cpp/ggml-metal.metal models/ggml/
+
 cp models/submodules/llama.cpp/ggml.c models/ggml/
 cp models/submodules/llama.cpp/ggml.h models/ggml/
 
