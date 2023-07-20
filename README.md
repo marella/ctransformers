@@ -20,7 +20,7 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 | GPT-2                 | `gpt2`      |
 | GPT-J, GPT4All-J      | `gptj`      |
 | GPT-NeoX, StableLM    | `gpt_neox`  |
-| LLaMA                 | `llama`     |
+| LLaMA, LLaMA 2        | `llama`     |
 | MPT                   | `mpt`       |
 | Dolly V2              | `dolly-v2`  |
 | Replit                | `replit`    |
@@ -113,21 +113,22 @@ It is integrated into LangChain. See [LangChain docs](https://python.langchain.c
 
 > **Note:** Currently only LLaMA and Falcon models have GPU support.
 
-To run some of the model layers on GPU (CUDA), set the `gpu_layers` parameter:
+To run some of the model layers on GPU, set the `gpu_layers` parameter:
 
 ```py
 llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-llama.bin', model_type='llama', gpu_layers=50)
 ```
+
+#### CUDA
 
 Make sure you have installed [CUDA 12](https://developer.nvidia.com/cuda-downloads) and latest [NVIDIA Drivers](https://www.nvidia.com/download/index.aspx).
 
 <details>
 <summary><strong>Show instructions for CUDA 11</strong></summary><br>
 
-To use with CUDA 11, reinstall the `ctransformers` package using:
+To use with CUDA 11, install the `ctransformers` package using:
 
 ```sh
-pip uninstall ctransformers --yes
 CT_CUBLAS=1 pip install ctransformers --no-binary ctransformers
 ```
 
@@ -135,7 +136,6 @@ On Windows PowerShell run:
 
 ```sh
 $env:CT_CUBLAS=1
-pip uninstall ctransformers --yes
 pip install ctransformers --no-binary ctransformers
 ```
 
@@ -143,13 +143,20 @@ On Windows Command Prompt run:
 
 ```sh
 set CT_CUBLAS=1
-pip uninstall ctransformers --yes
 pip install ctransformers --no-binary ctransformers
 ```
 
 </details>
 
 [Run in Google Colab](https://colab.research.google.com/drive/1Ihn7iPCYiqlTotpkqa1tOhUIpJBrJ1Tp)
+
+#### Metal
+
+To enable Metal support, install the `ctransformers` package using:
+
+```sh
+CT_METAL=1 pip install ctransformers --no-binary ctransformers
+```
 
 ## Documentation
 
