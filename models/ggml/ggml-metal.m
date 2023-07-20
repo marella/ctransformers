@@ -87,8 +87,6 @@ static NSString * const msl_library_source = @"see metal.metal";
 @end
 
 struct ggml_metal_context * ggml_metal_init(void) {
-    fprintf(stderr, "%s: allocating\n", __func__);
-
     struct ggml_metal_context * ctx = malloc(sizeof(struct ggml_metal_context));
 
     ctx->device = MTLCreateSystemDefaultDevice();
@@ -96,9 +94,7 @@ struct ggml_metal_context * ggml_metal_init(void) {
     ctx->n_buffers = 0;
 
     // determine if we can use MPS
-    if (MPSSupportsMTLDevice(ctx->device)) {
-        fprintf(stderr, "%s: using MPS\n", __func__);
-    } else {
+    if (!MPSSupportsMTLDevice(ctx->device)) {
         fprintf(stderr, "%s: not using MPS\n", __func__);
         GGML_ASSERT(false && "MPS not supported");
     }
@@ -124,7 +120,6 @@ struct ggml_metal_context * ggml_metal_init(void) {
         //NSString * path = [[NSBundle mainBundle] pathForResource:@"../../examples/metal/metal" ofType:@"metal"];
         NSBundle * bundle = [NSBundle bundleForClass:[GGMLMetalClass class]];
         NSString * path = [bundle pathForResource:@"ggml-metal" ofType:@"metal"];
-        fprintf(stderr, "%s: loading '%s'\n", __func__, [path UTF8String]);
 
         NSString * src  = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:&error];
         if (error) {
@@ -145,7 +140,6 @@ struct ggml_metal_context * ggml_metal_init(void) {
 #define GGML_METAL_ADD_KERNEL(name) \
         ctx->function_##name = [ctx->library newFunctionWithName:@"kernel_"#name]; \
         ctx->pipeline_##name = [ctx->device newComputePipelineStateWithFunction:ctx->function_##name error:nil]; \
-        fprintf(stderr, "%s: loaded %-32s %16p\n", __func__, "kernel_"#name, (void *) ctx->pipeline_##name);
 
         GGML_METAL_ADD_KERNEL(add);
         GGML_METAL_ADD_KERNEL(mul);
@@ -181,14 +175,6 @@ struct ggml_metal_context * ggml_metal_init(void) {
         GGML_METAL_ADD_KERNEL(cpy_f16_f16);
 
 #undef GGML_METAL_ADD_KERNEL
-    }
-
-    fprintf(stderr, "%s: recommendedMaxWorkingSetSize = %8.2f MB\n", __func__, ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
-    fprintf(stderr, "%s: hasUnifiedMemory             = %s\n",       __func__, ctx->device.hasUnifiedMemory ? "true" : "false");
-    if (ctx->device.maxTransferRate != 0) {
-        fprintf(stderr, "%s: maxTransferRate              = %8.2f MB/s\n", __func__, ctx->device.maxTransferRate / 1024.0 / 1024.0);
-    } else {
-        fprintf(stderr, "%s: maxTransferRate              = built-in GPU\n", __func__);
     }
 
     return ctx;
@@ -269,8 +255,6 @@ bool ggml_metal_add_buffer(
                 return false;
             }
 
-            fprintf(stderr, "%s: allocated '%-16s' buffer, size = %8.2f MB", __func__, name, size_aligned / 1024.0 / 1024.0);
-
             ++ctx->n_buffers;
         } else {
             // this overlap between the views will guarantee that the tensor with the maximum size will fully fit into
@@ -293,7 +277,6 @@ bool ggml_metal_add_buffer(
                     return false;
                 }
 
-                fprintf(stderr, "%s: allocated '%-16s' buffer, size = %8.2f MB, offs = %12ld", __func__, name, size_step_aligned / 1024.0 / 1024.0, i);
                 if (i + size_step < size) {
                     fprintf(stderr, "\n");
                 }
