@@ -181,8 +181,6 @@ struct ggml_metal_context * ggml_metal_init(void) {
 }
 
 void ggml_metal_free(struct ggml_metal_context * ctx) {
-    fprintf(stderr, "%s: deallocating\n", __func__);
-
     free(ctx);
 }
 
@@ -277,22 +275,12 @@ bool ggml_metal_add_buffer(
                     return false;
                 }
 
-                if (i + size_step < size) {
-                    fprintf(stderr, "\n");
-                }
-
                 ++ctx->n_buffers;
             }
         }
 
-        fprintf(stderr, ", (%8.2f / %8.2f)",
-                ctx->device.currentAllocatedSize / 1024.0 / 1024.0,
-                ctx->device.recommendedMaxWorkingSetSize / 1024.0 / 1024.0);
-
         if (ctx->device.currentAllocatedSize > ctx->device.recommendedMaxWorkingSetSize) {
             fprintf(stderr, ", warning: current allocated size is greater than the recommended max working set size\n");
-        } else {
-            fprintf(stderr, "\n");
         }
     }
 
