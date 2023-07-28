@@ -63,9 +63,10 @@ std::pair<std::vector<gpt_vocab::id>, float> encode_word(
       word.length() + 1, -std::numeric_limits<float>::infinity());
   best_segmentations_scores[0] = 1.0;
 
-  for (int start_idx = 0; start_idx < word.length(); ++start_idx) {
+  for (int start_idx = 0; start_idx < (int)word.length(); ++start_idx) {
     float best_score_at_start = best_segmentations_scores[start_idx];
-    for (int end_idx = start_idx + 1; end_idx <= word.length(); ++end_idx) {
+    for (int end_idx = start_idx + 1; end_idx <= (int)word.length();
+         ++end_idx) {
       std::string token = word.substr(start_idx, end_idx - start_idx);
       if (model.count(token) &&
           best_score_at_start != -std::numeric_limits<float>::infinity()) {
@@ -107,7 +108,7 @@ bool replit_tokenizer_load(replit_tokenizer &tokenizer, std::istream &fin,
   std::string word;
   std::vector<char> buf(128);
 
-  for (std::size_t i = 0; i < max_vocab_size; i++) {
+  for (std::size_t i = 0; (int)i < max_vocab_size; i++) {
     uint32_t len;
     fin.read((char *)&len, sizeof(len));
 
@@ -165,7 +166,7 @@ bool replit_model_load(const std::string &fname, replit_model &model,
   {
     uint32_t magic;
     fin.read((char *)&magic, sizeof(magic));
-    if (magic != 0x67676d6c) {
+    if (magic != GGML_FILE_MAGIC) {
       fprintf(stderr, "%s: invalid model file '%s' (bad magic)\n", __func__,
               fname.c_str());
       return false;
@@ -440,7 +441,6 @@ bool replit_eval(const replit_model &model, const int n_threads,
 
   struct ggml_context *ctx0 = ggml_init(params);
   struct ggml_cgraph gf = {};
-  gf.n_threads = n_threads;
 
   struct ggml_tensor *embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
   memcpy(embd->data, embd_inp.data(), N * ggml_element_size(embd));
@@ -595,7 +595,7 @@ bool replit_eval(const replit_model &model, const int n_threads,
 
   // run the computation
   ggml_build_forward_expand(&gf, inpL);
-  ggml_graph_compute(ctx0, &gf);
+  ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
 
   if (logits_all) {
     // return result for all tokens

@@ -13,14 +13,14 @@ class llama_llm : public LLM {
   }
 
   std::vector<gpt_vocab::id> Tokenize(const std::string &text) const override {
-    return llama_tokenize(ctx_->vocab, text, /*bos=*/true);
+    return llama_tokenize(ctx_->model.vocab, text, /*bos=*/true);
   }
 
   const std::string &Detokenize(const gpt_vocab::id id) const override {
     if (id >= llama_n_vocab(ctx_)) {
       return kEmptyString;
     }
-    return ctx_->vocab.id_to_token[id].tok;
+    return ctx_->model.vocab.id_to_token[id].tok;
   }
 
   bool IsEosToken(const gpt_vocab::id token) const override {
@@ -91,10 +91,12 @@ class llama_llm : public LLM {
     }
     params.n_gpu_layers = gpu_layers;
 
-    ctx_ = llama_init_from_file(filename.c_str(), params);
+    llama_model *model = llama_load_model_from_file(filename.c_str(), params);
+    ctx_ = llama_new_context_with_model(model, params);
     if (ctx_ == nullptr) {
       return false;
     }
+    ctx_->model_owner = true;
     n_ctx_ = llama_n_ctx(ctx_);
     return true;
   }

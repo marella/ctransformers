@@ -71,7 +71,7 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
   {
     uint32_t magic;
     fin.read((char *)&magic, sizeof(magic));
-    if (magic != 0x67676d6c) {
+    if (magic != GGML_FILE_MAGIC) {
       fprintf(stderr, "%s: invalid model file '%s' (bad magic)\n", __func__,
               fname.c_str());
       return false;
@@ -126,6 +126,11 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
              "<|user|>",
              "<|assistant|>",
              "<|end|>",
+             "<fim-prefix>",
+             "<fim-middle>",
+             "<fim-suffix>",
+             "<fim-pad>",
+             "<|end_of_turn|>",
          }) {
       if (vocab.token_to_id.find(token) != vocab.token_to_id.end()) {
         vocab.add_special_token(token);
@@ -462,7 +467,6 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
 
   struct ggml_context *ctx0 = ggml_init(params);
   struct ggml_cgraph gf = {};
-  gf.n_threads = n_threads;
 
   struct ggml_tensor *embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
   memcpy(embd->data, embd_inp.data(), N * ggml_element_size(embd));
@@ -733,7 +737,7 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
 
   // run the computation
   ggml_build_forward_expand(&gf, inpL);
-  ggml_graph_compute(ctx0, &gf);
+  ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
 
   // if (n_past%100 == 0) {
   //    ggml_graph_print   (&gf);

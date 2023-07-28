@@ -74,7 +74,7 @@ bool gpt_neox_model_load(const std::string &fname, gpt_neox_model &model,
   {
     uint32_t magic;
     fin.read((char *)&magic, sizeof(magic));
-    if (magic != 0x67676d6c) {
+    if (magic != GGML_FILE_MAGIC) {
       fprintf(stderr, "%s: invalid model file '%s' (bad magic)\n", __func__,
               fname.c_str());
       return false;
@@ -456,7 +456,6 @@ bool gpt_neox_eval(const gpt_neox_model &model, const int n_threads,
 
   struct ggml_context *ctx0 = ggml_init(params);
   struct ggml_cgraph gf = {};
-  gf.n_threads = n_threads;
 
   struct ggml_tensor *embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
   memcpy(embd->data, embd_inp.data(), N * ggml_element_size(embd));
@@ -507,8 +506,8 @@ bool gpt_neox_eval(const gpt_neox_model &model, const int n_threads,
                                        2 * sizeof(float) * n_embd / n_head));
 
       // using mode = 2 for GPT-NeoX mode
-      Qcur = ggml_rope_inplace(ctx0, Qcur, n_past, n_rot, 2);
-      Kcur = ggml_rope_inplace(ctx0, Kcur, n_past, n_rot, 2);
+      Qcur = ggml_rope_inplace(ctx0, Qcur, n_past, n_rot, 2, 0);
+      Kcur = ggml_rope_inplace(ctx0, Kcur, n_past, n_rot, 2, 0);
 
       // store key and value to memory
       {
@@ -648,7 +647,7 @@ bool gpt_neox_eval(const gpt_neox_model &model, const int n_threads,
 
   // run the computation
   ggml_build_forward_expand(&gf, inpL);
-  ggml_graph_compute(ctx0, &gf);
+  ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
 
   // if (n_past%100 == 0) {
   //    ggml_graph_print   (&gf);

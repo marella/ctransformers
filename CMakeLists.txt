@@ -1,11 +1,13 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.18)
 project(ctransformers C CXX)
 
 set(CT_INSTRUCTIONS "avx2" CACHE STRING "avx2 | avx | basic")
 
 option(CT_CUBLAS "Use cuBLAS" OFF)
+option(CT_CUDA_FORCE_DMMV "use dmmv instead of mmvq CUDA kernels" OFF)
+option(CT_CUDA_DMMV_F16 "use 16 bit floats for dmmv CUDA kernels" OFF)
 set(CT_CUDA_DMMV_X "32" CACHE STRING "x stride for dmmv CUDA kernels")
-set(CT_CUDA_DMMV_Y "1" CACHE STRING "y block size for dmmv CUDA kernels")
+set(CT_CUDA_MMV_Y "1" CACHE STRING "y block size for mmv CUDA kernels")
 set(CT_CUDA_KQUANTS_ITER "2" CACHE STRING "iters/thread per block for Q2_K/Q6_K")
 
 option(CT_METAL "Use Metal" OFF)
@@ -92,6 +94,17 @@ else()
     endif()
 endif()
 
+if (CT_CUBLAS)
+    if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        if (CT_CUDA_DMMV_F16)
+            set(CMAKE_CUDA_ARCHITECTURES "60;61") # needed for f16 CUDA intrinsics
+        else()
+            set(CMAKE_CUDA_ARCHITECTURES "52;61") # lowest CUDA 12 standard + lowest for integer intrinsics
+        endif()
+    endif()
+    message(STATUS "Using CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+endif()
+
 # Library
 
 add_library(
@@ -129,11 +142,14 @@ if (CT_CUBLAS)
 
         target_compile_definitions(ctransformers PRIVATE GGML_USE_CUBLAS)
         target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_X=${CT_CUDA_DMMV_X})
-        target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_Y=${CT_CUDA_DMMV_Y})
+        target_compile_definitions(ctransformers PRIVATE GGML_CUDA_MMV_Y=${CT_CUDA_MMV_Y})
         target_compile_definitions(ctransformers PRIVATE K_QUANTS_PER_ITERATION=${CT_CUDA_KQUANTS_ITER})
-
-        set_property(TARGET ctransformers PROPERTY CUDA_ARCHITECTURES OFF)
-        set_property(TARGET ctransformers PROPERTY CUDA_SELECT_NVCC_ARCH_FLAGS "Auto")
+        if (CT_CUDA_FORCE_DMMV)
+            target_compile_definitions(ctransformers PRIVATE GGML_CUDA_FORCE_DMMV)
+        endif()
+        if (CT_CUDA_DMMV_F16)
+            target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_F16)
+        endif()
     else()
         message(WARNING "cuBLAS not found")
     endif()

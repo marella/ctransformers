@@ -69,7 +69,7 @@ bool gptj_model_load(const std::string &fname, gptj_model &model,
   {
     uint32_t magic;
     fin.read((char *)&magic, sizeof(magic));
-    if (magic != 0x67676d6c) {
+    if (magic != GGML_FILE_MAGIC) {
       fprintf(stderr, "%s: invalid model file '%s' (bad magic)\n", __func__,
               fname.c_str());
       return false;
@@ -420,7 +420,6 @@ bool gptj_eval(const gptj_model &model, const int n_threads, const int n_past,
 
   struct ggml_context *ctx0 = ggml_init(params);
   struct ggml_cgraph gf = {};
-  gf.n_threads = n_threads;
 
   struct ggml_tensor *embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
   memcpy(embd->data, embd_inp.data(), N * ggml_element_size(embd));
@@ -451,13 +450,13 @@ bool gptj_eval(const gptj_model &model, const int n_threads, const int n_past,
           ggml_reshape_3d(
               ctx0, ggml_mul_mat(ctx0, model.layers[il].c_attn_q_proj_w, cur),
               n_embd / n_head, n_head, N),
-          n_past, n_rot, 0);
+          n_past, n_rot, 0, 0);
       struct ggml_tensor *Kcur = ggml_rope_inplace(
           ctx0,
           ggml_reshape_3d(
               ctx0, ggml_mul_mat(ctx0, model.layers[il].c_attn_k_proj_w, cur),
               n_embd / n_head, n_head, N),
-          n_past, n_rot, 0);
+          n_past, n_rot, 0, 0);
 
       // store key and value to memory
       {
@@ -581,7 +580,7 @@ bool gptj_eval(const gptj_model &model, const int n_threads, const int n_past,
 
   // run the computation
   ggml_build_forward_expand(&gf, inpL);
-  ggml_graph_compute(ctx0, &gf);
+  ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
 
   // if (n_past%100 == 0) {
   //    ggml_graph_print   (&gf);
