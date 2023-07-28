@@ -331,6 +331,7 @@ extern "C" {
         GGML_OP_ARGMAX,
         GGML_OP_REPEAT,
         GGML_OP_REPEAT_BACK,
+        GGML_OP_REPEAT2,
         GGML_OP_SILU_BACK,
         GGML_OP_NORM, // normalize
         GGML_OP_RMS_NORM,
@@ -783,6 +784,8 @@ extern "C" {
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
             struct ggml_tensor  * b);
+
+    #include "ggml/ggml-ggllm.h"
 
     GGML_API struct ggml_tensor * ggml_abs(
             struct ggml_context * ctx,

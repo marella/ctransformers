@@ -20,8 +20,8 @@ struct ggml_tensor *ggml_repeat2(struct ggml_context *ctx,
 
   result->op = GGML_OP_REPEAT2;
   result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-  result->src0 = a;
-  result->src1 = b;
+  result->src[0] = a;
+  result->src[1] = b;
 
   return result;
 }

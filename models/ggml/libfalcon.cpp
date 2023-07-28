@@ -600,6 +600,101 @@ struct falcon_context {
   }
 };
 
+struct falcon_load_tensor_shard {
+  std::vector<uint32_t> ne;
+  size_t size;
+  enum ggml_type type;
+  size_t file_idx;
+  size_t file_off;
+
+  void calc_size() { size = llama_calc_tensor_size(ne, type); }
+};
+
+enum falcon_split_type { SPLIT_NONE, SPLIT_BY_COLUMNS, SPLIT_BY_ROWS };
+
+struct falcon_load_tensor {
+  std::vector<falcon_load_tensor_shard> shards;
+
+  std::string name;
+  enum ggml_type type = GGML_TYPE_F32;
+  falcon_split_type split_type = SPLIT_NONE;
+  std::vector<uint32_t> ne;
+  size_t size;
+  struct ggml_tensor* ggml_tensor = NULL;
+  uint8_t* data;
+
+  falcon_load_tensor(const std::string& name) : name(name) {}
+
+  void calc_all() {
+    calc_type();
+    calc_split_type();
+    calc_ne();
+    calc_size();
+  }
+
+  void calc_type() {
+    const auto& first_shard = shards.at(0);
+    for (const auto& shard : shards) {
+      if (shard.type != first_shard.type) {
+        throw std::runtime_error(
+            format("inconsistent tensor shard type in '%s'", name.c_str()));
+      }
+    }
+    type = first_shard.type;
+  }
+
+  void calc_split_type() {
+    if (shards.at(0).ne.size() ==
+            1 ||               // 1D tensors are just duplicated in every file
+        shards.size() == 1) {  // only one file?
+      split_type = SPLIT_NONE;
+    } else if (name.find("tok_embeddings.") == 0 ||
+               name.find(".attention.wo.weight") != std::string::npos ||
+               name.find(".feed_forward.w2.weight") != std::string::npos) {
+      split_type = SPLIT_BY_COLUMNS;
+    } else {
+      split_type = SPLIT_BY_ROWS;
+    }
+  }
+
+  void calc_ne() {
+    const auto& first_shard = shards.at(0);
+    for (const auto& shard : shards) {
+      if (shard.ne != first_shard.ne) {
+        throw std::runtime_error(format(
+            "inconsistent tensor shard shape in '%s': first was %s, other was "
+            "%s",
+            name.c_str(), llama_format_tensor_shape(first_shard.ne).c_str(),
+            llama_format_tensor_shape(shard.ne).c_str()));
+      }
+    }
+    ne = first_shard.ne;
+    LLAMA_ASSERT(shards.size() <= UINT32_MAX);
+    uint32_t n_shards = (uint32_t)shards.size();
+    switch (split_type) {
+      case SPLIT_NONE:
+        ne = first_shard.ne;
+        break;
+      case SPLIT_BY_COLUMNS:
+        ne = {checked_mul<uint32_t>(first_shard.ne[0], n_shards),
+              first_shard.ne[1]};
+        break;
+      case SPLIT_BY_ROWS:
+        ne = {first_shard.ne[0],
+              checked_mul<uint32_t>(first_shard.ne[1], n_shards)};
+        break;
+    }
+  }
+
+  void calc_size() { size = llama_calc_tensor_size(ne, type); }
+};
+
+struct falcon_load_tensors_map {
+  // tensors is kept in a separate vector to preserve file order
+  std::vector<falcon_load_tensor> tensors;
+  std::unordered_map<std::string, size_t> name_to_idx;
+};
+
 enum falcon_file_version {
   FALCON_FILE_VERSION_GGML,  // ftype incompatible when using the current falcon
                              // converter, remainder is ggml format
@@ -624,7 +719,7 @@ struct falcon_file_loader {
   const char* fname;
 
   falcon_file_loader(const char* fname, size_t file_idx,
-                     llama_load_tensors_map& tensors_map)
+                     falcon_load_tensors_map& tensors_map)
       : file(fname, "rb") {
     this->fname = fname;
     read_magic();
@@ -777,9 +872,9 @@ struct falcon_file_loader {
 #endif
   }
   void read_tensor_metadata(size_t file_idx,
-                            llama_load_tensors_map& tensors_map) {
+                            falcon_load_tensors_map& tensors_map) {
     while (file.tell() < file.size) {
-      llama_load_tensor_shard shard;
+      falcon_load_tensor_shard shard;
       uint32_t n_dims = file.read_u32();
       uint32_t name_len = file.read_u32();
       shard.type = (enum ggml_type)file.read_u32();
@@ -887,7 +982,7 @@ struct falcon_file_saver {
       }
     }
   }
-  void write_tensor(llama_load_tensor& tensor, enum ggml_type new_type,
+  void write_tensor(falcon_load_tensor& tensor, enum ggml_type new_type,
                     const void* new_data, size_t new_size) {
     switch (new_type) {
       case GGML_TYPE_F32:
@@ -919,7 +1014,7 @@ struct falcon_file_saver {
 
 struct falcon_model_loader {
   std::vector<std::unique_ptr<falcon_file_loader>> file_loaders;
-  llama_load_tensors_map tensors_map;
+  falcon_load_tensors_map tensors_map;
   bool use_mmap;
   size_t num_ggml_tensors_created = 0;
   struct ggml_context* ggml_ctx = NULL;
@@ -950,14 +1045,14 @@ struct falcon_model_loader {
       use_mmap = false;
     }
     this->use_mmap = use_mmap;
-    for (llama_load_tensor& lt : tensors_map.tensors) {
+    for (falcon_load_tensor& lt : tensors_map.tensors) {
       lt.calc_all();
     }
   }
 
   bool alignment_prevents_mmap() {
-    for (const llama_load_tensor& lt : tensors_map.tensors) {
-      for (const llama_load_tensor_shard& shard : lt.shards) {
+    for (const falcon_load_tensor& lt : tensors_map.tensors) {
+      for (const falcon_load_tensor_shard& shard : lt.shards) {
         if (shard.file_off & 3) {
           return true;
         }
@@ -972,13 +1067,13 @@ struct falcon_model_loader {
     if (it == tensors_map.name_to_idx.end()) {
       throw std::runtime_error(std::string("missing word_embeddings.weight"));
     }
-    const llama_load_tensor& lt = tensors_map.tensors.at(it->second);
+    const falcon_load_tensor& lt = tensors_map.tensors.at(it->second);
     return file_loaders.at(0)->hparams.n_embd / lt.shards.at(0).ne.at(0);
   }
 
   void calc_sizes(size_t* ctx_size_p, size_t* mmapped_size_p) const {
     *ctx_size_p = *mmapped_size_p = 0;
-    for (const llama_load_tensor& lt : tensors_map.tensors) {
+    for (const falcon_load_tensor& lt : tensors_map.tensors) {
       *ctx_size_p += ggml_tensor_overhead();
       *(use_mmap ? mmapped_size_p : ctx_size_p) += lt.size;
     }
@@ -992,7 +1087,7 @@ struct falcon_model_loader {
       throw std::runtime_error(std::runtime_error(format(
           "falcon.cpp: tensor '%s' is missing from model", name.c_str())));
     }
-    llama_load_tensor& lt = tensors_map.tensors.at(it->second);
+    falcon_load_tensor& lt = tensors_map.tensors.at(it->second);
     // special case - wizard padding token - todo: move into quantizer only
     // (only with mmap versions)
     if (!use_mmap || lt.ne.size() != 2 || ne.size() != 2 ||
@@ -1012,7 +1107,7 @@ struct falcon_model_loader {
     return get_tensor_for(lt, backend);
   }
 
-  struct ggml_tensor* get_tensor_for(llama_load_tensor& lt,
+  struct ggml_tensor* get_tensor_for(falcon_load_tensor& lt,
                                      ggml_backend backend) {
     struct ggml_tensor* tensor;
     if (backend != GGML_BACKEND_CPU) {
@@ -1024,17 +1119,11 @@ struct falcon_model_loader {
            lt.name.find("lm_head.weight") == 0)) {
         // TODO: evaluate if we lose perplexity from the changed shape
         tensor = ggml_new_tensor_2d(ggml_ctx, lt.type, 8192, 65024);
-        fprintf(stderr,
-                "falcon.cpp: Special mode: Wizard-type finetuning - changing "
-                "tensor shape\n");
       } else if (use_mmap && lt.ne[0] == 4544 && lt.ne[1] == 65025 &&
                  (lt.name.find("transformer.word_embeddings.weight") == 0 ||
                   lt.name.find("lm_head.weight") == 0)) {
         // TODO: evaluate if we lose perplexity from the changed shape
         tensor = ggml_new_tensor_2d(ggml_ctx, lt.type, 4544, 65024);
-        fprintf(stderr,
-                "falcon.cpp: Special mode: Wizard-type finetuning - changing "
-                "tensor shape\n");
       } else {
         tensor =
             ggml_new_tensor_2d(ggml_ctx, lt.type, lt.ne.at(0), lt.ne.at(1));
@@ -1069,7 +1158,7 @@ struct falcon_model_loader {
     size_t data_size = 0;
     size_t prefetch_size = 0;
     size_t lock_size = 0;
-    for (const llama_load_tensor& lt : tensors_map.tensors) {
+    for (const falcon_load_tensor& lt : tensors_map.tensors) {
       data_size += lt.size;
       if (lt.ggml_tensor->backend == GGML_BACKEND_CPU) {
         prefetch_size += lt.size;
@@ -1084,7 +1173,7 @@ struct falcon_model_loader {
     }
 
     size_t done_size = 0;
-    for (llama_load_tensor& lt : tensors_map.tensors) {
+    for (falcon_load_tensor& lt : tensors_map.tensors) {
       if (progress_callback) {
         const char* status = "";
         if (lt.ggml_tensor->backend == GGML_BACKEND_CPU)
@@ -1144,7 +1233,7 @@ struct falcon_model_loader {
     }
   }
 
-  void load_data_for(llama_load_tensor& lt) {
+  void load_data_for(falcon_load_tensor& lt) {
     if (use_mmap) {
       LLAMA_ASSERT(lt.shards.size() == 1);
       lt.data = (uint8_t*)mapping->addr + lt.shards.at(0).file_off;
@@ -1154,7 +1243,7 @@ struct falcon_model_loader {
       file.read_raw(lt.data, lt.size);
     } else if (lt.split_type == SPLIT_BY_ROWS) {
       size_t offset = 0;
-      for (llama_load_tensor_shard& shard : lt.shards) {
+      for (falcon_load_tensor_shard& shard : lt.shards) {
         llama_file& file = file_loaders.at(shard.file_idx)->file;
         file.seek(shard.file_off, SEEK_SET);
         file.read_raw(lt.data + offset, shard.size);
@@ -1166,7 +1255,7 @@ struct falcon_model_loader {
       // large loads.
       std::vector<llama_buffer> tmp_bufs(lt.shards.size());
       for (size_t i = 0; i < lt.shards.size(); i++) {
-        llama_load_tensor_shard& shard = lt.shards.at(i);
+        falcon_load_tensor_shard& shard = lt.shards.at(i);
         llama_file& file = file_loaders.at(shard.file_idx)->file;
         file.seek(shard.file_off, SEEK_SET);
         tmp_bufs.at(i).resize(shard.size);
@@ -1190,7 +1279,7 @@ struct falcon_model_loader {
     }
   }
 
-  static void print_checksum(llama_load_tensor& lt) {
+  static void print_checksum(falcon_load_tensor& lt) {
     uint32_t sum = 0;
     for (size_t i = 0; i < lt.size; i++) {
       uint8_t byte = lt.data[i];
@@ -1736,7 +1825,7 @@ static falcon_model* falcon_model_load_internal(
   }
 
   // populate `tensors_by_name`
-  for (llama_load_tensor& lt : ml->tensors_map.tensors) {
+  for (falcon_load_tensor& lt : ml->tensors_map.tensors) {
     model.tensors_by_name.emplace_back(lt.name, lt.ggml_tensor);
   }
 
@@ -1843,54 +1932,6 @@ static bool falcon_eval_internal(falcon_context& lctx,
   // otherwise, the threads are spin-lock waiting for the BLAS calls and are
   // degrading the performance
   ggml_cgraph gf = {};
-  gf.n_threads =
-      N >= 32 && ggml_cpu_has_blas() && !ggml_cpu_has_gpublas() ? 1 : n_threads;
-
-#if 0
-            lctx.use_buf(ctx0, 0);
-            
-            // test mode:
-            //1. create a 16k tensor filled with 0.5 values as Qcur
-            //2. run rope_inplace and then dump the resulting tensor for a plot
-            // test dimensions: n_embeddings (col), n_heads (rows=1), n_past (previous tokens calculated)
-            // can't we just calculate only the current one and copy the previous from cache ??            
-            // create a vector of 10k tensors, then run the same rope for npast 0-9999
-            // we want to see how clean the rotation is
-            struct ggml_tensor *test_tensor[100];
-
-
-            for (int multi=0;multi < 10;multi++)
-            {
-                struct ggml_context * ctx0 = ggml_init(params);
-#define GGML_MAX_NODES 1000000
-                ggml_cgraph ggf = {};
-                ggf.n_threads = 1;
-                lctx.use_buf(ctx0, 0);
-                for (int i = 0; i < 100; i++) {
-                    int n_past = (multi*100 + i)*20;
-                    test_tensor[i] = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, 2, 1, 1);
-                    
-                    ggml_set_f32(test_tensor[i], 0.5);
-                    test_tensor[i] = ggml_rope_inplace(ctx0, test_tensor[i], n_past, 2, 2,10000);
-                    ggml_build_forward_expand(&ggf, test_tensor[i]);
-                }
-                ggml_graph_compute(ctx0, &ggf);
-                for (int i = 0; i < 100; i++) {
-                    int n_past = (multi*100 + i)*20;
-                    float rot_x,rot_y;
-                    rot_x = ggml_get_tensor_index(test_tensor[i],0,0,0,0);
-                    rot_y = ggml_get_tensor_index(test_tensor[i],1,0,0,0);
-                    printf("%d,%f,%f\n", n_past, rot_x, rot_y);
-                    // printf("rotation at %d is %f,%f\n", n_past, rot_x,rot_y);
-                    
-                }    
-                // destruct the gf
-                ggml_free(ctx0);
-            }
-            
-            //ggml_tensor_printf(test_tensor[90],"test",0,true,true);
-            exit(0 );
-#endif
 
   struct ggml_tensor* embd = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, N);
   ggml_set_name(embd, "embd");
@@ -2005,8 +2046,8 @@ static bool falcon_eval_internal(falcon_context& lctx,
       ggml_set_name(Vcur, "Vcur");
 
       // using mode = 2 for neox mode
-      Qcur = ggml_rope_inplace(ctx0, Qcur, n_past, head_dim, 2);
-      Kcur = ggml_rope_inplace(ctx0, Kcur, n_past, head_dim, 2);
+      Qcur = ggml_rope_inplace(ctx0, Qcur, n_past, head_dim, 2, n_ctx);
+      Kcur = ggml_rope_inplace(ctx0, Kcur, n_past, head_dim, 2, n_ctx);
       // Qcur->meta.f_custom[GGML_CUSTOM_F_ROPE_ANG_SCALE] = 0.25f;
       // Kcur->meta.f_custom[GGML_CUSTOM_F_ROPE_ANG_SCALE] = 0.25f;
 
@@ -2253,10 +2294,10 @@ static bool falcon_eval_internal(falcon_context& lctx,
       ggml_metal_get_tensor(lctx.ctx_metal, kv_self.v);
     }
 
-    ggml_graph_compute(ctx0, &gf);
+    ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
   }
 #else
-  ggml_graph_compute(ctx0, &gf);
+  ggml_graph_compute_with_ctx(ctx0, &gf, n_threads);
 #endif
   model.lm_head->backend = lm_head_backend;
   if (cgraph_fname) {
@@ -3423,275 +3464,6 @@ falcon_token falcon_sample_token(struct falcon_context* ctx,
   return result;
 }
 
-//
-// quantization
-//
-
-static void falcon_model_quantize_internal(
-    const std::string& fname_inp, const std::string& fname_out,
-    const falcon_model_quantize_params* params) {
-  ggml_type quantized_type;
-  llama_ftype ftype = params->ftype;
-  int nthread = params->nthread;
-
-  switch (params->ftype) {
-    case LLAMA_FTYPE_MOSTLY_Q4_0:
-      quantized_type = GGML_TYPE_Q4_0;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q4_1:
-      quantized_type = GGML_TYPE_Q4_1;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q5_0:
-      quantized_type = GGML_TYPE_Q5_0;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q5_1:
-      quantized_type = GGML_TYPE_Q5_1;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q8_0:
-      quantized_type = GGML_TYPE_Q8_0;
-      break;
-    case LLAMA_FTYPE_MOSTLY_F16:
-      quantized_type = GGML_TYPE_F16;
-      break;
-    case LLAMA_FTYPE_ALL_F32:
-      quantized_type = GGML_TYPE_F32;
-      break;
-
-#ifdef GGML_USE_K_QUANTS
-    // K-quants
-    case LLAMA_FTYPE_MOSTLY_Q2_K:
-      quantized_type = GGML_TYPE_Q2_K;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q3_K_S:
-    case LLAMA_FTYPE_MOSTLY_Q3_K_M:
-    case LLAMA_FTYPE_MOSTLY_Q3_K_L:
-      quantized_type = GGML_TYPE_Q3_K;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q4_K_S:
-    case LLAMA_FTYPE_MOSTLY_Q4_K_M:
-      quantized_type = GGML_TYPE_Q4_K;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q5_K_S:
-    case LLAMA_FTYPE_MOSTLY_Q5_K_M:
-      quantized_type = GGML_TYPE_Q5_K;
-      break;
-    case LLAMA_FTYPE_MOSTLY_Q6_K:
-      quantized_type = GGML_TYPE_Q6_K;
-      break;
-#endif
-    default:
-      throw std::runtime_error(format("invalid output file type %d\n", ftype));
-  }
-
-  if (nthread <= 0) {
-    nthread = std::thread::hardware_concurrency();
-  }
-
-  std::unique_ptr<falcon_model_loader> model_loader(
-      new falcon_model_loader(fname_inp, /*use_mmap*/ false,
-                              /*vocab_only*/ false));
-  falcon_file_saver file_saver(
-      fname_out.c_str(), model_loader->file_loaders.at(0).get(), params->ftype);
-
-#ifdef GGML_USE_K_QUANTS
-  int n_attention_wv = 0;
-  int n_feed_forward_w2 = 0;
-  for (auto& tensor : model_loader->tensors_map.tensors) {
-    if (tensor.name.find("attention.wv.weight") != std::string::npos) {
-      ++n_attention_wv;
-    } else if (tensor.name.find("feed_forward.w2.weight") !=
-               std::string::npos) {
-      ++n_feed_forward_w2;
-    }
-  }
-
-  // int i_attention_wv = 0;
-  // int i_feed_forward_w2 = 0;
-#endif
-
-  size_t total_size_org = 0;
-  size_t total_size_new = 0;
-  std::vector<int64_t> hist_all(1 << 4, 0);
-
-  std::vector<std::thread> workers;
-  std::mutex mutex;
-
-  size_t idx = 0;
-  for (llama_load_tensor& tensor : model_loader->tensors_map.tensors) {
-    llama_buffer read_data;
-    read_data.resize(tensor.size);
-    tensor.data = read_data.addr;
-    model_loader->load_data_for(tensor);
-
-    printf("[%4zu/%4zu] %36s - %16s, type = %6s, ", ++idx,
-           model_loader->tensors_map.tensors.size(), tensor.name.c_str(),
-           llama_format_tensor_shape(tensor.ne).c_str(),
-           ggml_type_name(tensor.type));
-
-    // This used to be a regex, but <regex> has an extreme cost to compile
-    // times.
-    bool quantize = tensor.name.rfind("weight") ==
-                    tensor.name.size() - 6;  // ends with 'weight'?
-
-    // quantize only 2D tensors
-    quantize &= (tensor.ne.size() == 2);
-    quantize &=
-        params->quantize_output_tensor || tensor.name != "lm_head.weight";
-    quantize &= quantized_type != tensor.type;
-
-    enum ggml_type new_type;
-    void* new_data;
-    size_t new_size;
-    llama_buffer work;
-
-    if (!quantize) {
-      new_type = tensor.type;
-      new_data = tensor.data;
-      new_size = tensor.size;
-      printf("(Not quantizing) size = %8.3f MB\n",
-             tensor.size / 1024.0 / 1024.0);
-    } else {
-      new_type = quantized_type;
-#ifdef GGML_USE_K_QUANTS
-      if (quantized_type == GGML_TYPE_Q2_K ||
-          quantized_type == GGML_TYPE_Q3_K ||
-          quantized_type == GGML_TYPE_Q4_K ||
-          quantized_type == GGML_TYPE_Q5_K ||
-          quantized_type == GGML_TYPE_Q6_K) {
-        int nx = tensor.ne.at(0);
-        int ny = tensor.ne.at(0);
-        if (nx % QK_K != 0 || ny % QK_K != 0) {
-          fprintf(stderr,
-                  "\n\n========================= Tensor sizes %d x %d are not "
-                  "divisible by %d\n",
-                  nx, ny, QK_K);
-          fprintf(stderr,
-                  "This is required to be able to use k-quants for now - use "
-                  "legacy quantizer instead (non K)!\n");
-          fprintf(stderr,
-                  "============================================================"
-                  "============================\n\n");
-          throw std::runtime_error("Unsupported tensor size encountered\n");
-        }
-      }
-      // if (tensor.name == ".mlp.dense_") {
-      //    new_type = GGML_TYPE_Q6_K;
-      // }
-      // TODO falcon
-
-#endif
-
-      float* f32_data;
-      size_t nelements = tensor.ne.at(0) * tensor.ne.at(1);
-      llama_buffer f32_conv_buf;
-
-      if (tensor.type == GGML_TYPE_F32) {
-        f32_data = (float*)tensor.data;
-      } else if (ggml_is_quantized(tensor.type) && !params->allow_requantize) {
-        throw std::runtime_error(format("requantizing from type %s is disabled",
-                                        ggml_type_name(tensor.type)));
-      } else {
-        llama_convert_tensor_internal(tensor, f32_conv_buf, nelements, nthread);
-        f32_data = (float*)f32_conv_buf.addr;
-      }
-
-      printf("quantizing .. ");
-      fflush(stdout);
-
-      work.resize(nelements * 4);  // upper bound on size
-      new_data = work.addr;
-      std::vector<int64_t> hist_cur(1 << 4, 0);
-
-      int chunk_size = 32 * 512;
-      const int nchunk = (nelements + chunk_size - 1) / chunk_size;
-      const int nthread_use =
-          nthread > 1 ? std::max(1, std::min(nthread, nchunk)) : 1;
-      if (nthread_use < 2) {
-        new_size = ggml_quantize_chunk(new_type, f32_data, new_data, 0,
-                                       nelements, hist_cur.data());
-      } else {
-        size_t counter = 0;
-        new_size = 0;
-        auto compute = [&mutex, &counter, &hist_cur, &new_size, new_type,
-                        f32_data, new_data, nelements, chunk_size]() {
-          std::vector<int64_t> local_hist;
-          size_t local_size = 0;
-          while (true) {
-            std::unique_lock<std::mutex> lock(mutex);
-            size_t first = counter;
-            counter += chunk_size;
-            if (first >= nelements) {
-              if (!local_hist.empty()) {
-                for (int j = 0; j < int(local_hist.size()); ++j) {
-                  hist_cur[j] += local_hist[j];
-                }
-                new_size += local_size;
-              }
-              break;
-            }
-            lock.unlock();
-            size_t last = std::min(nelements, first + chunk_size);
-            if (local_hist.empty()) {
-              local_hist.resize(hist_cur.size(), 0);
-            }
-            local_size +=
-                ggml_quantize_chunk(new_type, f32_data, new_data, first,
-                                    last - first, local_hist.data());
-          }
-        };
-        if ((int)workers.size() < nthread_use - 1) {
-          workers.resize(nthread_use - 1);
-        }
-        for (int it = 0; it < nthread_use - 1; ++it) {
-          workers[it] = std::thread(compute);
-        }
-        compute();
-        for (int it = 0; it < nthread_use - 1; ++it) {
-          workers[it].join();
-        }
-      }
-
-      printf("size = %8.2f MB -> %8.2f MB | hist: ",
-             tensor.size / 1024.0 / 1024.0, new_size / 1024.0 / 1024.0);
-      int64_t tot_count = 0;
-      for (size_t i = 0; i < hist_cur.size(); i++) {
-        hist_all[i] += hist_cur[i];
-        tot_count += hist_cur[i];
-      }
-
-      if (tot_count > 0) {
-        for (size_t i = 0; i < hist_cur.size(); i++) {
-          printf("%5.3f ", hist_cur[i] / float(nelements));
-        }
-      }
-      printf("\n");
-    }
-    total_size_org += tensor.size;
-    total_size_new += new_size;
-    file_saver.write_tensor(tensor, new_type, new_data, new_size);
-  }
-
-  printf("%s: model size  = %8.2f MB\n", __func__,
-         total_size_org / 1024.0 / 1024.0);
-  printf("%s: quant size  = %8.2f MB\n", __func__,
-         total_size_new / 1024.0 / 1024.0);
-
-  {
-    int64_t sum_all = 0;
-    for (size_t i = 0; i < hist_all.size(); i++) {
-      sum_all += hist_all[i];
-    }
-
-    if (sum_all > 0) {
-      printf("%s: hist: ", __func__);
-      for (size_t i = 0; i < hist_all.size(); i++) {
-        printf("%5.3f ", hist_all[i] / float(sum_all));
-      }
-      printf("\n");
-    }
-  }
-}
-
 // set context memory buffers
 void falcon_context_set_buffers(falcon_context* ctx, int n_batch, int n_ctx) {
   LLAMA_ASSERT(ctx->model.type != FALCON_UNKNOWN);
@@ -3758,7 +3530,7 @@ struct falcon_context* falcon_context_prepare(falcon_context_params params,
 #ifdef GGML_USE_METAL
   if (params.n_gpu_layers > 0) {
     // this allocates all Metal resources and memory buffers
-    ctx->ctx_metal = ggml_metal_init();
+    ctx->ctx_metal = ggml_metal_init(1);
 
     void* data_ptr = NULL;
     size_t data_size = 0;
@@ -3864,17 +3636,6 @@ struct falcon_context* falcon_init_from_file(
 }
 
 void falcon_free(struct falcon_context* f_ctx) { delete f_ctx; }
-
-int falcon_model_quantize(const char* fname_inp, const char* fname_out,
-                          const falcon_model_quantize_params* params) {
-  try {
-    falcon_model_quantize_internal(fname_inp, fname_out, params);
-    return 0;
-  } catch (const std::exception& err) {
-    fprintf(stderr, "%s: failed to quantize: %s\n", __func__, err.what());
-    return 1;
-  }
-}
 
 int falcon_apply_lora_from_file_internal(struct falcon_context* ctx,
                                          const char* path_lora,
@@ -4061,7 +3822,7 @@ int falcon_apply_lora_from_file_internal(struct falcon_context* ctx,
           return 1;
         }
         size_t idx = model_loader->tensors_map.name_to_idx[base_name];
-        llama_load_tensor& lt = model_loader->tensors_map.tensors[idx];
+        falcon_load_tensor& lt = model_loader->tensors_map.tensors[idx];
         base_t = model_loader->get_tensor(
             base_name, {(uint32_t)dest_t->ne[0], (uint32_t)dest_t->ne[1]},
             GGML_BACKEND_CPU);
@@ -4112,8 +3873,7 @@ int falcon_apply_lora_from_file_internal(struct falcon_context* ctx,
       }
 
       struct ggml_cgraph gf = ggml_build_forward(r);
-      gf.n_threads = n_threads;
-      ggml_graph_compute(lora_ctx, &gf);
+      ggml_graph_compute_with_ctx(lora_ctx, &gf, n_threads);
 
       // we won't need these tensors again, reset the context to save memory
       ggml_free(lora_ctx);
@@ -4155,8 +3915,6 @@ int falcon_apply_lora_from_file(struct falcon_context* ctx,
 int falcon_get_kv_cache_token_count(const struct falcon_context* ctx) {
   return ctx->model.kv_self.n;
 }
-
-#define LLAMA_MAX_RNG_STATE (64 * 1024)
 
 void falcon_set_rng_seed(struct falcon_context* ctx, int seed) {
   if (seed < 0) {
@@ -4262,7 +4020,6 @@ size_t falcon_copy_state_data(struct falcon_context* ctx, uint8_t* dst) {
 
       ggml_context* cpy_ctx = ggml_init({4096, NULL, /* no_alloc */ true});
       ggml_cgraph gf{};
-      gf.n_threads = 1;
 
       // ggml_tensor * kout3d = ggml_new_tensor_3d(cpy_ctx, kv_self.k->type,
       // n_embd, kv_ntok, n_layer);
@@ -4313,7 +4070,7 @@ size_t falcon_copy_state_data(struct falcon_context* ctx, uint8_t* dst) {
 
       ggml_build_forward_expand(&gf, ggml_cpy(cpy_ctx, k3d, kout3d));
       ggml_build_forward_expand(&gf, ggml_cpy(cpy_ctx, v3d, vout3d));
-      ggml_graph_compute(cpy_ctx, &gf);
+      ggml_graph_compute_with_ctx(cpy_ctx, &gf, /*n_threads=*/1);
 
       ggml_free(cpy_ctx);
     }
@@ -4408,7 +4165,6 @@ size_t falcon_set_state_data(struct falcon_context* ctx, uint8_t* src) {
 
       ggml_context* cpy_ctx = ggml_init({4096, NULL, /* no_alloc */ true});
       ggml_cgraph gf{};
-      gf.n_threads = 1;
       // ggml_tensor * kin3d = ggml_new_tensor_3d(cpy_ctx, kv_self.k->type,
       // n_embd, kv_ntok, n_layer);
       ggml_tensor* kin3d = ggml_new_tensor_3d(
@@ -4457,7 +4213,7 @@ size_t falcon_set_state_data(struct falcon_context* ctx, uint8_t* src) {
 
       ggml_build_forward_expand(&gf, ggml_cpy(cpy_ctx, kin3d, k3d));
       ggml_build_forward_expand(&gf, ggml_cpy(cpy_ctx, vin3d, v3d));
-      ggml_graph_compute(cpy_ctx, &gf);
+      ggml_graph_compute_with_ctx(cpy_ctx, &gf, /*n_threads=*/1);
 
       ggml_free(cpy_ctx);
     }

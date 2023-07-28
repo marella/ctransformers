@@ -3760,6 +3760,7 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "ARGMAX",
     "REPEAT",
     "REPEAT_BACK",
+    "REPEAT2",
     "SILU_BACK",
     "NORM",
     "RMS_NORM",
@@ -3811,7 +3812,7 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "CROSS_ENTROPY_LOSS_BACK",
 };
 
-static_assert(GGML_OP_COUNT == 59, "GGML_OP_COUNT != 59");
+static_assert(GGML_OP_COUNT == 60, "GGML_OP_COUNT != 60");
 
 static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "none",
@@ -3832,6 +3833,7 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "argmax(x)",
     "repeat(x)",
     "repeat_back(x)",
+    "repeat2(x)",
     "silu_back(x)",
     "norm(x)",
     "rms_norm(x)",
@@ -3883,7 +3885,7 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "cross_entropy_loss_back(x,y)",
 };
 
-static_assert(GGML_OP_COUNT == 59, "GGML_OP_COUNT != 59");
+static_assert(GGML_OP_COUNT == 60, "GGML_OP_COUNT != 60");
 
 static_assert(GGML_OP_POOL_COUNT == 2, "GGML_OP_POOL_COUNT != 2");
 
@@ -5583,6 +5585,8 @@ struct ggml_tensor * ggml_repeat_back(
 
     return result;
 }
+
+#include "ggml/ggml-ggllm.c"
 
 // ggml_abs
 
@@ -14655,6 +14659,10 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
             {
                 ggml_compute_forward_repeat_back(params, tensor->src[0], tensor);
             } break;
+        case GGML_OP_REPEAT2:
+            {
+                ggml_compute_forward_repeat2(params, tensor->src[0], tensor);
+            } break;
         case GGML_OP_SILU_BACK:
             {
                 ggml_compute_forward_silu_back(params, tensor->src[0], tensor->src[1], tensor);
@@ -15048,6 +15056,10 @@ static void ggml_compute_backward(struct ggml_context * ctx, struct ggml_tensor 
                             ggml_repeat(ctx, tensor->grad, src0->grad),
                             inplace);
                 }
+            } break;
+        case GGML_OP_REPEAT2:
+            {
+                GGML_ASSERT(false); // TODO: not implemented
             } break;
         case GGML_OP_SILU_BACK:
             {
@@ -16181,6 +16193,7 @@ struct ggml_cplan ggml_graph_plan(struct ggml_cgraph * cgraph, int n_threads) {
             case GGML_OP_ARGMAX:
             case GGML_OP_REPEAT:
             case GGML_OP_REPEAT_BACK:
+            case GGML_OP_REPEAT2:
             {
                     n_tasks = 1;
                 } break;
