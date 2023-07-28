@@ -90,6 +90,10 @@ class llama_llm : public LLM {
       params.n_ctx = context_length;
     }
     params.n_gpu_layers = gpu_layers;
+    std::regex pattern_70b(R"((\b|_)70b(\b|_))", std::regex_constants::icase);
+    if (std::regex_search(filename, pattern_70b)) {
+      params.n_gqa = 8;
+    }
 
     llama_model *model = llama_load_model_from_file(filename.c_str(), params);
     ctx_ = llama_new_context_with_model(model, params);

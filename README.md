@@ -27,6 +27,8 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 | StarCoder, StarChat   | `starcoder` |
 | Falcon (Experimental) | `falcon`    |
 
+> **Note:** In order to use LLaMA 2 70B models, the model path or repo name must contain the word `70B`. For example, `llama-2-70b.bin`, `llama-2-70b/ggml-model.bin`, `TheBloke/Llama-2-70B-GGML` etc.
+
 ## Installation
 
 ```sh
