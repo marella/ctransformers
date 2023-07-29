@@ -41,7 +41,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install huggingface-hub pytest
+          pip install huggingface-hub py-cpuinfo pytest
 
       - name: Test
         run: pytest tests --lib ${{ matrix.instructions }}

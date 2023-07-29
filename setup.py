@@ -33,6 +33,7 @@ setup(
     package_data={name: ["lib/*/*.so", "lib/*/*.dll", "lib/*/*.dylib"]},
     install_requires=[
         "huggingface-hub",
+        "py-cpuinfo",
     ],
     extras_require={
         "tests": [
