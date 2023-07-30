@@ -17,11 +17,17 @@ def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
             path = "local"
         elif cuda:
             path = "cuda"
-        elif platform.processor() == "arm":
-            # Apple silicon doesn't support AVX/AVX2.
-            path = "basic" if system == "Darwin" else ""
         else:
-            path = "avx2"
+            from cpuinfo import get_cpu_info
+
+            flags = get_cpu_info()["flags"]
+
+            if "avx2" in flags:
+                path = "avx2"
+            elif "avx" in flags and "f16c" in flags:
+                path = "avx"
+            else:
+                path = "basic"
 
     name = "ctransformers"
     if system == "Linux":
