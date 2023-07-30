@@ -29,7 +29,7 @@ for param, description in config_docs.items():
     default = getattr(Config, param)
     docs += f"| `{param}` | `{type_}` | {description} | `{default}` |\n"
 docs += """
-> **Note:** Currently only LLaMA and MPT models support the `context_length` parameter and only LLaMA models support the `gpu_layers` parameter.
+> **Note:** Currently only LLaMA, MPT, Falcon models support the `context_length` parameter and only LLaMA, Falcon models support the `gpu_layers` parameter.
 """
 
 # Class Docs

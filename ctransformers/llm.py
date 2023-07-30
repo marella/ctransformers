@@ -568,7 +568,7 @@ class LLM:
     ) -> List[float]:
         """Computes embeddings for a text or list of tokens.
 
-        > **Note:** Currently only LLaMA models support embeddings.
+        > **Note:** Currently only LLaMA and Falcon models support embeddings.
 
         Args:
             input: The input text or list of tokens to get embeddings for.
