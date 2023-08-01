@@ -20,7 +20,7 @@ def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
         else:
             from cpuinfo import get_cpu_info
 
-            flags = get_cpu_info()["flags"]
+            flags = get_cpu_info().get('flags', [])
 
             if "avx2" in flags:
                 path = "avx2"
