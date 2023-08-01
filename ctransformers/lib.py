@@ -2,6 +2,8 @@ from typing import Optional
 import platform
 from pathlib import Path
 
+from .logger import logger
+
 
 def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
     lib_directory = Path(__file__).parent.resolve() / "lib"
@@ -17,10 +19,19 @@ def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
             path = "local"
         elif cuda:
             path = "cuda"
+        elif platform.processor() == "arm":
+            # Apple silicon doesn't support AVX/AVX2.
+            path = "basic" if system == "Darwin" else ""
         else:
             from cpuinfo import get_cpu_info
 
-            flags = get_cpu_info()["flags"]
+            try:
+                flags = get_cpu_info()["flags"]
+            except:
+                logger.warning(
+                    "Unable to detect CPU features. Please report at https://github.com/marella/ctransformers/issues"
+                )
+                flags = []
 
             if "avx2" in flags:
                 path = "avx2"
