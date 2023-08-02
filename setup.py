@@ -29,13 +29,16 @@ setup(
     author_email="mv.ravindra007@gmail.com",
     url="https://github.com/marella/{}".format(name),
     license="MIT",
-    packages=[name],
+    packages=[name, "ctransformers.gptq"],
     package_data={name: ["lib/*/*.so", "lib/*/*.dll", "lib/*/*.dylib"]},
     install_requires=[
         "huggingface-hub",
         "py-cpuinfo>=9.0.0,<10.0.0",
     ],
     extras_require={
+        "gptq": [
+            "exllama==0.1.0",
+        ],
         "tests": [
             "pytest",
         ],

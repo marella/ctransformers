@@ -127,6 +127,17 @@ class AutoModelForCausalLM:
         Returns:
             `LLM` object.
         """
+        if model_type is None and "gptq" in str(model_path_or_repo_id).lower():
+            model_type = "gptq"
+        if model_type == "gptq":
+            from . import gptq
+
+            return gptq.AutoModelForCausalLM.from_pretrained(
+                model_path_or_repo_id,
+                local_files_only=local_files_only,
+                **kwargs,
+            )
+
         config = config or AutoConfig.from_pretrained(
             model_path_or_repo_id,
             local_files_only=local_files_only,
