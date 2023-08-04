@@ -5,7 +5,8 @@ set(CT_INSTRUCTIONS "avx2" CACHE STRING "avx2 | avx | basic")
 
 option(CT_CUBLAS "Use cuBLAS" OFF)
 option(CT_CUDA_FORCE_DMMV "use dmmv instead of mmvq CUDA kernels" OFF)
-option(CT_CUDA_DMMV_F16 "use 16 bit floats for dmmv CUDA kernels" OFF)
+option(CT_CUDA_F16 "llama: use 16 bit floats for some calculations" OFF)
+set(CT_CUDA_MMQ_Y "64" CACHE STRING "y tile size for mmq CUDA kernels")
 set(CT_CUDA_DMMV_X "32" CACHE STRING "x stride for dmmv CUDA kernels")
 set(CT_CUDA_MMV_Y "1" CACHE STRING "y block size for mmv CUDA kernels")
 set(CT_CUDA_KQUANTS_ITER "2" CACHE STRING "iters/thread per block for Q2_K/Q6_K")
@@ -96,10 +97,14 @@ endif()
 
 if (CT_CUBLAS)
     if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-        if (CT_CUDA_DMMV_F16)
-            set(CMAKE_CUDA_ARCHITECTURES "60;61") # needed for f16 CUDA intrinsics
+        # 52 == lowest CUDA 12 standard
+        # 60 == f16 CUDA intrinsics
+        # 61 == integer CUDA intrinsics
+        # 70 == compute capability at which unrolling a loop in mul_mat_q kernels is faster
+        if (CT_CUDA_F16)
+            set(CMAKE_CUDA_ARCHITECTURES "60;61;70") # needed for f16 CUDA intrinsics
         else()
-            set(CMAKE_CUDA_ARCHITECTURES "52;61") # lowest CUDA 12 standard + lowest for integer intrinsics
+            set(CMAKE_CUDA_ARCHITECTURES "52;61;70") # lowest CUDA 12 standard + lowest for integer intrinsics
         endif()
     endif()
     message(STATUS "Using CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
@@ -111,6 +116,7 @@ add_library(
     ctransformers SHARED
     models/llm.cc
     models/ggml/ggml.c
+    models/ggml/ggml-alloc.c
     models/ggml/k_quants.c
     models/ggml/cmpnct_unicode.cpp
 )
@@ -141,14 +147,15 @@ if (CT_CUBLAS)
         target_link_libraries(ctransformers PRIVATE CUDA::cudart CUDA::cublas CUDA::cublasLt)
 
         target_compile_definitions(ctransformers PRIVATE GGML_USE_CUBLAS)
+        target_compile_definitions(ctransformers PRIVATE GGML_CUDA_MMQ_Y=${CT_CUDA_MMQ_Y})
         target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_X=${CT_CUDA_DMMV_X})
         target_compile_definitions(ctransformers PRIVATE GGML_CUDA_MMV_Y=${CT_CUDA_MMV_Y})
         target_compile_definitions(ctransformers PRIVATE K_QUANTS_PER_ITERATION=${CT_CUDA_KQUANTS_ITER})
         if (CT_CUDA_FORCE_DMMV)
             target_compile_definitions(ctransformers PRIVATE GGML_CUDA_FORCE_DMMV)
         endif()
-        if (CT_CUDA_DMMV_F16)
-            target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_F16)
+        if (CT_CUDA_F16)
+            target_compile_definitions(ctransformers PRIVATE GGML_CUDA_F16)
         endif()
     else()
         message(WARNING "cuBLAS not found")
