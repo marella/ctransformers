@@ -40,6 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - if: ${{ matrix.cublas == 'ON' && startsWith(runner.os, 'Linux') }}
+        uses: jlumbroso/free-disk-space@v1.2.0
+
       - if: ${{ matrix.cublas == 'ON' }}
         uses: Jimver/cuda-toolkit@v0.2.11
         id: cuda-toolkit
