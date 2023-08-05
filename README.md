@@ -10,6 +10,7 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
   - [Hugging Face Hub](#hugging-face-hub)
   - [LangChain](#langchain)
   - [GPU](#gpu)
+  - [GPTQ](#gptq)
 - [Documentation](#documentation)
 - [License](#license)
 
@@ -107,7 +108,7 @@ It is integrated into LangChain. See [LangChain docs](https://python.langchain.c
 
 ### GPU
 
-> **Note:** Currently only LLaMA and Falcon models have GPU support.
+> **Note:** Currently only LLaMA, MPT and Falcon models have GPU support.
 
 To run some of the model layers on GPU, set the `gpu_layers` parameter:
 
@@ -154,30 +155,52 @@ To enable Metal support, install the `ctransformers` package using:
 CT_METAL=1 pip install ctransformers --no-binary ctransformers
 ```
 
+### GPTQ
+
+> **Note:** This is an experimental feature and only LLaMA models are supported using [ExLlama](https://github.com/turboderp/exllama).
+
+Install additional dependencies using:
+
+```sh
+pip install ctransformers[gptq]
+```
+
+Load a GPTQ model using:
+
+```py
+llm = AutoModelForCausalLM.from_pretrained("TheBloke/Llama-2-7B-GPTQ")
+```
+
+[Run in Google Colab](https://colab.research.google.com/drive/1SzHslJ4CiycMOgrppqecj4VYCWFnyrN0)
+
+> If model name or path doesn't contain the word `gptq` then specify `model_type="gptq"`.
+
+It can also be used with LangChain. Low-level APIs are not fully supported.
+
 ## Documentation
 
 <!-- API_DOCS -->
 
 ### Config
 
-| Parameter            | Type        | Description                                              | Default |
-| :------------------- | :---------- | :------------------------------------------------------- | :------ |
-| `top_k`              | `int`       | The top-k value to use for sampling.                     | `40`    |
-| `top_p`              | `float`     | The top-p value to use for sampling.                     | `0.95`  |
-| `temperature`        | `float`     | The temperature to use for sampling.                     | `0.8`   |
-| `repetition_penalty` | `float`     | The repetition penalty to use for sampling.              | `1.1`   |
-| `last_n_tokens`      | `int`       | The number of last tokens to use for repetition penalty. | `64`    |
-| `seed`               | `int`       | The seed value to use for sampling tokens.               | `-1`    |
-| `max_new_tokens`     | `int`       | The maximum number of new tokens to generate.            | `256`   |
-| `stop`               | `List[str]` | A list of sequences to stop generation when encountered. | `None`  |
-| `stream`             | `bool`      | Whether to stream the generated text.                    | `False` |
-| `reset`              | `bool`      | Whether to reset the model state before generating text. | `True`  |
-| `batch_size`         | `int`       | The batch size to use for evaluating tokens.             | `8`     |
-| `threads`            | `int`       | The number of threads to use for evaluating tokens.      | `-1`    |
-| `context_length`     | `int`       | The maximum context length to use.                       | `-1`    |
-| `gpu_layers`         | `int`       | The number of layers to run on GPU.                      | `0`     |
+| Parameter            | Type        | Description                                                     | Default |
+| :------------------- | :---------- | :-------------------------------------------------------------- | :------ |
+| `top_k`              | `int`       | The top-k value to use for sampling.                            | `40`    |
+| `top_p`              | `float`     | The top-p value to use for sampling.                            | `0.95`  |
+| `temperature`        | `float`     | The temperature to use for sampling.                            | `0.8`   |
+| `repetition_penalty` | `float`     | The repetition penalty to use for sampling.                     | `1.1`   |
+| `last_n_tokens`      | `int`       | The number of last tokens to use for repetition penalty.        | `64`    |
+| `seed`               | `int`       | The seed value to use for sampling tokens.                      | `-1`    |
+| `max_new_tokens`     | `int`       | The maximum number of new tokens to generate.                   | `256`   |
+| `stop`               | `List[str]` | A list of sequences to stop generation when encountered.        | `None`  |
+| `stream`             | `bool`      | Whether to stream the generated text.                           | `False` |
+| `reset`              | `bool`      | Whether to reset the model state before generating text.        | `True`  |
+| `batch_size`         | `int`       | The batch size to use for evaluating tokens in a single prompt. | `8`     |
+| `threads`            | `int`       | The number of threads to use for evaluating tokens.             | `-1`    |
+| `context_length`     | `int`       | The maximum context length to use.                              | `-1`    |
+| `gpu_layers`         | `int`       | The number of layers to run on GPU.                             | `0`     |
 
-> **Note:** Currently only LLaMA, MPT, Falcon models support the `context_length` parameter and only LLaMA, Falcon models support the `gpu_layers` parameter.
+> **Note:** Currently only LLaMA, MPT and Falcon models support the `context_length` and `gpu_layers` parameters.
 
 ### <kbd>class</kbd> `AutoModelForCausalLM`
 
@@ -318,7 +341,7 @@ Computes embeddings for a text or list of tokens.
 **Args:**
 
 - <b>`input`</b>: The input text or list of tokens to get embeddings for.
-- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens in a single prompt. Default: `8`
 - <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
 
 **Returns:**
@@ -341,7 +364,7 @@ Evaluates a list of tokens.
 **Args:**
 
 - <b>`tokens`</b>: The list of tokens to evaluate.
-- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens in a single prompt. Default: `8`
 - <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
 
 ---
@@ -374,7 +397,7 @@ Generates new tokens from a list of tokens.
 - <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.1`
 - <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
 - <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
-- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens in a single prompt. Default: `8`
 - <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
 - <b>`reset`</b>: Whether to reset the model state before generating text. Default: `True`
 
@@ -488,7 +511,7 @@ Generates text from a prompt.
 - <b>`repetition_penalty`</b>: The repetition penalty to use for sampling. Default: `1.1`
 - <b>`last_n_tokens`</b>: The number of last tokens to use for repetition penalty. Default: `64`
 - <b>`seed`</b>: The seed value to use for sampling tokens. Default: `-1`
-- <b>`batch_size`</b>: The batch size to use for evaluating tokens. Default: `8`
+- <b>`batch_size`</b>: The batch size to use for evaluating tokens in a single prompt. Default: `8`
 - <b>`threads`</b>: The number of threads to use for evaluating tokens. Default: `-1`
 - <b>`stop`</b>: A list of sequences to stop generation when encountered. Default: `None`
 - <b>`stream`</b>: Whether to stream the generated text. Default: `False`
