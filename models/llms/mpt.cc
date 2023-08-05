@@ -49,7 +49,7 @@ struct mpt_model {
 
 // load the model's weights from a file
 bool mpt_model_load(const std::string &fname, mpt_model &model,
-                    gpt_vocab &vocab) {
+                    gpt_vocab &vocab, const int gpu_layers) {
   auto fin = std::ifstream(fname, std::ios::binary);
   if (!fin) {
     fprintf(stderr, "%s: failed to open '%s'\n", __func__, fname.c_str());
@@ -194,15 +194,16 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
 
     for (int i = 0; i < (int)n_layer; ++i) {
       auto &layer = model.layers[i];
+      const bool gpu = i >= (int)n_layer - gpu_layers;
 
       layer.norm_1_weight = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
       layer.c_attn_wqkv_weight =
-          ggml_new_tensor_2d(ctx, wtype, n_embd, 3 * n_embd);
+          ct_new_tensor(ctx, wtype, n_embd, 3 * n_embd, gpu);
       layer.c_attn_out_proj_weight =
-          ggml_new_tensor_2d(ctx, wtype, n_embd, n_embd);
+          ct_new_tensor(ctx, wtype, n_embd, n_embd, gpu);
       layer.norm_2_weight = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
-      layer.ffn_up_proj = ggml_new_tensor_2d(ctx, wtype, n_embd, 4 * n_embd);
-      layer.ffn_down_proj = ggml_new_tensor_2d(ctx, wtype, 4 * n_embd, n_embd);
+      layer.ffn_up_proj = ct_new_tensor(ctx, wtype, n_embd, 4 * n_embd, gpu);
+      layer.ffn_down_proj = ct_new_tensor(ctx, wtype, 4 * n_embd, n_embd, gpu);
 
       // map by name
       model.tensors["transformer.blocks." + std::to_string(i) +
@@ -305,7 +306,9 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
         return false;
       }
 
-      fin.read(reinterpret_cast<char *>(tensor->data), ggml_nbytes(tensor));
+      uint8_t *data = ct_alloc(tensor);
+      fin.read(reinterpret_cast<char *>(data), ggml_nbytes(tensor));
+      ct_transform(data, tensor);
 
       total_size += ggml_nbytes(tensor);
     }
@@ -591,4 +594,33 @@ bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
   return true;
 }
 
-REGISTER_LLM(mpt);
+class mpt_llm : public LLM {
+ public:
+  virtual ~mpt_llm() {
+    ct_free(model_.tensors);
+    if (model_.ctx != nullptr) {
+      ggml_free(model_.ctx);
+    }
+  }
+
+ protected:
+  bool Load(const std::string &filename, const int context_length,
+            const int gpu_layers) override {
+    if (context_length > 0) {
+      model_.hparams.n_ctx = context_length;
+    }
+    if (!mpt_model_load(filename, model_, vocab_, gpu_layers)) {
+      return false;
+    }
+    n_ctx_ = model_.hparams.n_ctx;
+    return true;
+  }
+
+  bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
+            const int n_past) override {
+    return mpt_eval(model_, threads, n_past, tokens, logits_, mem_per_token_);
+  }
+
+ private:
+  mpt_model model_;
+};

@@ -20,6 +20,10 @@
 
 #include "ggml/ggml.h"
 
+#ifdef GGML_USE_CUBLAS
+#include "ggml/ggml-cuda.h"
+#endif
+
 // https://github.com/ggerganov/ggml/blob/master/examples/common.cpp
 
 struct gpt_vocab {
@@ -200,6 +204,69 @@ gpt_vocab::id gpt_sample_top_k_top_p(
   int idx = dist(rng);
 
   return logits_id[idx].second;
+}
+
+// CUDA
+
+// https://github.com/ggerganov/llama.cpp/blob/332311234a0aa2974b2450710e22e09d90dd6b0b/llama.cpp#L719-L740
+ggml_tensor *ct_new_tensor(ggml_context *ctx, enum ggml_type type,
+                           const std::vector<int64_t> &shape, const bool gpu) {
+  const bool no_alloc = ggml_get_no_alloc(ctx);
+  ggml_set_no_alloc(ctx, gpu);
+  ggml_tensor *tensor;
+  if (shape.size() == 1) {
+    tensor = ggml_new_tensor_1d(ctx, type, shape[0]);
+  } else if (shape.size() == 2) {
+    tensor = ggml_new_tensor_2d(ctx, type, shape[0], shape[1]);
+  } else {
+    GGML_ASSERT(false && "Invalid tensor shape.");
+  }
+  if (gpu) {
+    tensor->backend = GGML_BACKEND_GPU;
+  }
+  ggml_set_no_alloc(ctx, no_alloc);
+  return tensor;
+}
+
+ggml_tensor *ct_new_tensor(ggml_context *ctx, enum ggml_type type, int64_t x,
+                           const bool gpu) {
+  return ct_new_tensor(ctx, type, {x}, gpu);
+}
+
+ggml_tensor *ct_new_tensor(ggml_context *ctx, enum ggml_type type, int64_t x,
+                           int64_t y, const bool gpu) {
+  return ct_new_tensor(ctx, type, {x, y}, gpu);
+}
+
+// https://github.com/ggerganov/llama.cpp/blob/332311234a0aa2974b2450710e22e09d90dd6b0b/llama.cpp#L772-L778
+uint8_t *ct_alloc(ggml_tensor *tensor) {
+  if (tensor->backend == GGML_BACKEND_CPU) {
+    return (uint8_t *)tensor->data;
+  }
+  return (uint8_t *)malloc(ggml_nbytes(tensor));
+}
+
+// https://github.com/ggerganov/llama.cpp/blob/332311234a0aa2974b2450710e22e09d90dd6b0b/llama.cpp#L783-L797
+void ct_transform(uint8_t *data, ggml_tensor *tensor) {
+  if (tensor->backend == GGML_BACKEND_CPU) {
+    return;
+  }
+#ifdef GGML_USE_CUBLAS
+  ggml_cuda_transform_tensor(data, tensor);
+#else
+  GGML_ASSERT(false && "CUDA is not enabled.");
+#endif
+  free(data);
+}
+
+// https://github.com/ggerganov/llama.cpp/blob/332311234a0aa2974b2450710e22e09d90dd6b0b/llama.cpp#L321-L325
+void ct_free(const std::map<std::string, struct ggml_tensor *> &tensors) {
+#ifdef GGML_USE_CUBLAS
+  for (const auto &kv : tensors) {
+    ggml_cuda_free_data(kv.second);
+  }
+  ggml_cuda_free_scratch();
+#endif
 }
 
 #endif
