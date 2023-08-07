@@ -1,5 +1,6 @@
-from typing import Optional
 import platform
+from ctypes import CDLL
+from typing import List, Optional
 from pathlib import Path
 
 from .logger import logger
@@ -29,7 +30,8 @@ def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
                 flags = get_cpu_info()["flags"]
             except:
                 logger.warning(
-                    "Unable to detect CPU features. Please report at https://github.com/marella/ctransformers/issues"
+                    "Unable to detect CPU features. "
+                    "Please report at https://github.com/marella/ctransformers/issues"
                 )
                 flags = []
 
@@ -59,3 +61,35 @@ def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
             f"  {'CT_CUBLAS=1 ' if cuda else ''}pip install ctransformers --no-binary ctransformers\n\n"
         )
     return str(path)
+
+
+def load_cuda() -> bool:
+    try:
+        import nvidia
+    except ImportError:
+        return False
+    if not nvidia.__file__:
+        logger.warning(
+            "CUDA libraries might not be installed properly. "
+            "Please report at https://github.com/marella/ctransformers/issues"
+        )
+        return False
+    path = Path(nvidia.__file__).parent
+    system = platform.system()
+    if system == "Windows":
+        libs = [
+            path / "cuda_runtime" / "bin" / "cudart64_12.dll",
+            path / "cublas" / "bin" / "cublas64_12.dll",
+        ]
+    else:
+        libs = [
+            path / "cuda_runtime" / "lib" / "libcudart.so.12",
+            path / "cublas" / "lib" / "libcublas.so.12",
+        ]
+    for lib in libs:
+        if not lib.is_file():
+            return False
+    libs = [str(lib.resolve()) for lib in libs]
+    for lib in libs:
+        CDLL(lib)
+    return True

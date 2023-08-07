@@ -36,6 +36,10 @@ setup(
         "py-cpuinfo>=9.0.0,<10.0.0",
     ],
     extras_require={
+        "cuda": [
+            "nvidia-cuda-runtime-cu12",
+            "nvidia-cublas-cu12",
+        ],
         "gptq": [
             "exllama==0.1.0",
         ],

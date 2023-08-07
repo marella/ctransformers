@@ -24,7 +24,7 @@ from typing import (
     Union,
 )
 
-from .lib import find_library
+from .lib import find_library, load_cuda
 from .utils import Vector, utf8_split_incomplete
 
 c_int_p = POINTER(c_int)
@@ -99,6 +99,8 @@ def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
         os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "bin"))
 
     path = find_library(path, cuda=cuda)
+    if "cuda" in path:
+        load_cuda()
     lib = CDLL(path)
 
     lib.ctransformers_llm_create.argtypes = [
