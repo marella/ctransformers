@@ -116,36 +116,15 @@ To run some of the model layers on GPU, set the `gpu_layers` parameter:
 llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-llama.bin', model_type='llama', gpu_layers=50)
 ```
 
+[Run in Google Colab](https://colab.research.google.com/drive/1Ihn7iPCYiqlTotpkqa1tOhUIpJBrJ1Tp)
+
 #### CUDA
 
-Make sure you have installed [CUDA 12](https://developer.nvidia.com/cuda-downloads) and latest [NVIDIA Drivers](https://www.nvidia.com/download/index.aspx).
-
-<details>
-<summary><strong>Show instructions for CUDA 11</strong></summary><br>
-
-To use with CUDA 11, install the `ctransformers` package using:
+Install CUDA libraries using:
 
 ```sh
-CT_CUBLAS=1 pip install ctransformers --no-binary ctransformers
+pip install ctransformers[cuda]
 ```
-
-On Windows PowerShell run:
-
-```sh
-$env:CT_CUBLAS=1
-pip install ctransformers --no-binary ctransformers
-```
-
-On Windows Command Prompt run:
-
-```sh
-set CT_CUBLAS=1
-pip install ctransformers --no-binary ctransformers
-```
-
-</details>
-
-[Run in Google Colab](https://colab.research.google.com/drive/1Ihn7iPCYiqlTotpkqa1tOhUIpJBrJ1Tp)
 
 #### Metal
 
