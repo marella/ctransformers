@@ -68,13 +68,7 @@ def load_cuda() -> bool:
         import nvidia
     except ImportError:
         return False
-    if not nvidia.__file__:
-        logger.warning(
-            "CUDA libraries might not be installed properly. "
-            "Please report at https://github.com/marella/ctransformers/issues"
-        )
-        return False
-    path = Path(nvidia.__file__).parent
+    path = Path(nvidia.__path__[0])
     system = platform.system()
     if system == "Windows":
         libs = [
