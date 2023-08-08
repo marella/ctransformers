@@ -55,7 +55,9 @@ class AutoModelForCausalLM:
 
         model_path = None
         if path_type == "file":
-            model_path = Path(model_path).parent
+            model_path = Path(model_path_or_repo_id).parent
+        elif path_type == "dir" :
+            model_path = Path(model_path_or_repo_id)
         elif path_type == "repo":
             model_path = snapshot_download(
                 repo_id=model_path_or_repo_id,
