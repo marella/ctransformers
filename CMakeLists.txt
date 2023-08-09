@@ -178,6 +178,7 @@ if (CT_METAL)
     )
 
     target_compile_definitions(ctransformers PRIVATE GGML_USE_METAL)
+    target_compile_definitions(ctransformers PRIVATE GGML_METAL_NDEBUG)
 
     set_target_properties(ctransformers PROPERTIES RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/models/ggml/ggml-metal.metal")
     configure_file(models/ggml/ggml-metal.metal lib/ggml-metal.metal COPYONLY)
