@@ -16,17 +16,17 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 
 ## Supported Models
 
-| Models                | Model Type  |
-| :-------------------- | ----------- |
-| GPT-2                 | `gpt2`      |
-| GPT-J, GPT4All-J      | `gptj`      |
-| GPT-NeoX, StableLM    | `gpt_neox`  |
-| LLaMA, LLaMA 2        | `llama`     |
-| MPT                   | `mpt`       |
-| Dolly V2              | `dolly-v2`  |
-| Replit                | `replit`    |
-| StarCoder, StarChat   | `starcoder` |
-| Falcon (Experimental) | `falcon`    |
+| Models              | Model Type    | CUDA | Metal |
+| :------------------ | ------------- | :--: | :---: |
+| GPT-2               | `gpt2`        |      |       |
+| GPT-J, GPT4All-J    | `gptj`        |      |       |
+| GPT-NeoX, StableLM  | `gpt_neox`    |      |       |
+| Falcon              | `falcon`      |  ✅  |       |
+| LLaMA, LLaMA 2      | `llama`       |  ✅  |  ✅   |
+| MPT                 | `mpt`         |  ✅  |       |
+| StarCoder, StarChat | `gpt_bigcode` |  ✅  |       |
+| Dolly V2            | `dolly-v2`    |      |       |
+| Replit              | `replit`      |      |       |
 
 ## Installation
 
@@ -108,8 +108,6 @@ It is integrated into LangChain. See [LangChain docs](https://python.langchain.c
 
 ### GPU
 
-> **Note:** Currently only LLaMA, MPT and Falcon models have GPU support.
-
 To run some of the model layers on GPU, set the `gpu_layers` parameter:
 
 ```py
@@ -179,7 +177,7 @@ It can also be used with LangChain. Low-level APIs are not fully supported.
 | `context_length`     | `int`       | The maximum context length to use.                              | `-1`    |
 | `gpu_layers`         | `int`       | The number of layers to run on GPU.                             | `0`     |
 
-> **Note:** Currently only LLaMA, MPT and Falcon models support the `context_length` and `gpu_layers` parameters.
+> **Note:** Currently only LLaMA, MPT and Falcon models support the `context_length` parameter.
 
 ### <kbd>class</kbd> `AutoModelForCausalLM`
 
