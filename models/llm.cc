@@ -41,7 +41,7 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
     llm = new mpt_llm;
   } else if (type == "replit") {
     llm = new replit_llm;
-  } else if (type == "starcoder") {
+  } else if (type == "starcoder" || type == "gptbigcode") {
     llm = new starcoder_llm;
   }
 

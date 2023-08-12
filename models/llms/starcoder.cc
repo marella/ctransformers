@@ -60,7 +60,7 @@ struct starcoder_model {
 
 // load the model's weights from a file
 bool starcoder_model_load(const std::string &fname, starcoder_model &model,
-                          gpt_vocab &vocab) {
+                          gpt_vocab &vocab, const int gpu_layers) {
   auto fin = std::ifstream(fname, std::ios::binary);
   if (!fin) {
     fprintf(stderr, "%s: failed to open '%s'\n", __func__, fname.c_str());
@@ -251,6 +251,7 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
 
     for (int i = 0; i < n_layer; ++i) {
       auto &layer = model.layers[i];
+      const bool gpu = i >= (int)n_layer - gpu_layers;
 
       layer.ln_1_g = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
       layer.ln_1_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
@@ -259,18 +260,18 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
       layer.ln_2_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
 
       layer.c_attn_attn_w =
-          ggml_new_tensor_2d(ctx, wtype, n_embd, n_embd + 2 * kv_dim);
+          ct_new_tensor(ctx, wtype, n_embd, n_embd + 2 * kv_dim, gpu);
       layer.c_attn_attn_b =
           ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd + 2 * kv_dim);
 
-      layer.c_attn_proj_w = ggml_new_tensor_2d(ctx, wtype, n_embd, n_embd);
+      layer.c_attn_proj_w = ct_new_tensor(ctx, wtype, n_embd, n_embd, gpu);
       layer.c_attn_proj_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
 
-      layer.c_mlp_fc_w = ggml_new_tensor_2d(
-          ctx, wtype, n_embd, 4 * n_embd);  // TODO: 4*n_embd = config.n_inner
+      layer.c_mlp_fc_w = ct_new_tensor(ctx, wtype, n_embd, 4 * n_embd,
+                                       gpu);  // TODO: 4*n_embd = config.n_inner
       layer.c_mlp_fc_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 4 * n_embd);
 
-      layer.c_mlp_proj_w = ggml_new_tensor_2d(ctx, wtype, 4 * n_embd, n_embd);
+      layer.c_mlp_proj_w = ct_new_tensor(ctx, wtype, 4 * n_embd, n_embd, gpu);
       layer.c_mlp_proj_b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
 
       // map by name
@@ -390,7 +391,9 @@ bool starcoder_model_load(const std::string &fname, starcoder_model &model,
         return false;
       }
 
-      fin.read(reinterpret_cast<char *>(tensor->data), ggml_nbytes(tensor));
+      uint8_t *data = ct_alloc(tensor);
+      fin.read(reinterpret_cast<char *>(data), ggml_nbytes(tensor));
+      ct_transform(data, tensor);
 
       // GPT-2 models share the WTE tensor as the LM head
       if (name == "model/wte" && has_lm_head == false) {
@@ -762,4 +765,34 @@ bool starcoder_eval(const starcoder_model &model, const int n_threads,
   return true;
 }
 
-REGISTER_LLM(starcoder);
+class starcoder_llm : public LLM {
+ public:
+  virtual ~starcoder_llm() {
+    ct_free(model_.tensors);
+    if (model_.ctx != nullptr) {
+      ggml_free(model_.ctx);
+    }
+  }
+
+ protected:
+  bool Load(const std::string &filename, const int context_length,
+            const int gpu_layers) override {
+    if (context_length > 0) {
+      model_.hparams.n_ctx = context_length;
+    }
+    if (!starcoder_model_load(filename, model_, vocab_, gpu_layers)) {
+      return false;
+    }
+    n_ctx_ = model_.hparams.n_ctx;
+    return true;
+  }
+
+  bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
+            const int n_past) override {
+    return starcoder_eval(model_, threads, n_past, tokens, logits_,
+                          mem_per_token_);
+  }
+
+ private:
+  starcoder_model model_;
+};
