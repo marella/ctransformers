@@ -51,16 +51,22 @@ class RingBuffer {
   int pos_ = 0;
 };
 
+struct Config {
+  int context_length;
+  int gpu_layers;
+  bool mmap;
+  bool mlock;
+};
+
 class LLM {
  public:
   virtual ~LLM(){};
 
-  bool Init(const std::string &filename, const int context_length,
-            const int gpu_layers) {
+  bool Init(const std::string &filename, const Config &config) {
     if (initialized_) {
       return false;
     }
-    if (!Load(filename, context_length, gpu_layers)) {
+    if (!Load(filename, config)) {
       return false;
     }
     previous_tokens_.Init(ContextLength());
@@ -161,8 +167,7 @@ class LLM {
   std::vector<float> embeddings_;
   RingBuffer previous_tokens_;
 
-  virtual bool Load(const std::string &filename, const int context_length,
-                    const int gpu_layers) = 0;
+  virtual bool Load(const std::string &filename, const Config &config) = 0;
 
   virtual bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,
                     const int n_past) = 0;
@@ -189,36 +194,35 @@ class LLM {
   }
 };
 
-#define REGISTER_LLM(_name)                                                \
-  class _name##_llm : public LLM {                                         \
-   public:                                                                 \
-    virtual ~_name##_llm() {                                               \
-      if (model_.ctx != nullptr) {                                         \
-        ggml_free(model_.ctx);                                             \
-      }                                                                    \
-    }                                                                      \
-                                                                           \
-   protected:                                                              \
-    bool Load(const std::string &filename, const int context_length,       \
-              const int gpu_layers) override {                             \
-      if (context_length > 0) {                                            \
-        model_.hparams.n_ctx = context_length;                             \
-      }                                                                    \
-      if (!_name##_model_load(filename, model_, vocab_)) {                 \
-        return false;                                                      \
-      }                                                                    \
-      n_ctx_ = model_.hparams.n_ctx;                                       \
-      return true;                                                         \
-    }                                                                      \
-                                                                           \
-    bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads, \
-              const int n_past) override {                                 \
-      return _name##_eval(model_, threads, n_past, tokens, logits_,        \
-                          mem_per_token_);                                 \
-    }                                                                      \
-                                                                           \
-   private:                                                                \
-    _name##_model model_;                                                  \
+#define REGISTER_LLM(_name)                                                 \
+  class _name##_llm : public LLM {                                          \
+   public:                                                                  \
+    virtual ~_name##_llm() {                                                \
+      if (model_.ctx != nullptr) {                                          \
+        ggml_free(model_.ctx);                                              \
+      }                                                                     \
+    }                                                                       \
+                                                                            \
+   protected:                                                               \
+    bool Load(const std::string &filename, const Config &config) override { \
+      if (config.context_length > 0) {                                      \
+        model_.hparams.n_ctx = config.context_length;                       \
+      }                                                                     \
+      if (!_name##_model_load(filename, model_, vocab_)) {                  \
+        return false;                                                       \
+      }                                                                     \
+      n_ctx_ = model_.hparams.n_ctx;                                        \
+      return true;                                                          \
+    }                                                                       \
+                                                                            \
+    bool Eval(const std::vector<gpt_vocab::id> &tokens, const int threads,  \
+              const int n_past) override {                                  \
+      return _name##_eval(model_, threads, n_past, tokens, logits_,         \
+                          mem_per_token_);                                  \
+    }                                                                       \
+                                                                            \
+   private:                                                                 \
+    _name##_model model_;                                                   \
   }
 
 #endif

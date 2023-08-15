@@ -775,12 +775,11 @@ class starcoder_llm : public LLM {
   }
 
  protected:
-  bool Load(const std::string &filename, const int context_length,
-            const int gpu_layers) override {
-    if (context_length > 0) {
-      model_.hparams.n_ctx = context_length;
+  bool Load(const std::string &filename, const Config &config) override {
+    if (config.context_length > 0) {
+      model_.hparams.n_ctx = config.context_length;
     }
-    if (!starcoder_model_load(filename, model_, vocab_, gpu_layers)) {
+    if (!starcoder_model_load(filename, model_, vocab_, config.gpu_layers)) {
       return false;
     }
     n_ctx_ = model_.hparams.n_ctx;

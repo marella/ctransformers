@@ -647,10 +647,9 @@ class replit_llm : public LLM {
 
  protected:
   replit_tokenizer replit_tokenizer_;
-  bool Load(const std::string &filename, const int context_length,
-            const int gpu_layers) override {
-    if (context_length > 0) {
-      model_.hparams.n_ctx = context_length;
+  bool Load(const std::string &filename, const Config &config) override {
+    if (config.context_length > 0) {
+      model_.hparams.n_ctx = config.context_length;
     }
     if (!replit_model_load(filename, model_, replit_tokenizer_)) {
       return false;

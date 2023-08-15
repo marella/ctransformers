@@ -13,6 +13,7 @@ from ctypes import (
     c_char_p,
     c_void_p,
     POINTER,
+    Structure,
 )
 from typing import (
     Any,
@@ -55,6 +56,25 @@ class Config:
     # model
     context_length: int = -1
     gpu_layers: int = 0
+    mmap: bool = True
+    mlock: bool = False
+
+    def to_struct(self):
+        return ConfigStruct(
+            context_length=self.context_length,
+            gpu_layers=self.gpu_layers,
+            mmap=self.mmap,
+            mlock=self.mlock,
+        )
+
+
+class ConfigStruct(Structure):
+    _fields_ = [
+        ("context_length", c_int),
+        ("gpu_layers", c_int),
+        ("mmap", c_bool),
+        ("mlock", c_bool),
+    ]
 
 
 docs = OrderedDict(
@@ -106,8 +126,7 @@ def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
     lib.ctransformers_llm_create.argtypes = [
         c_char_p,  # model_path
         c_char_p,  # model_type
-        c_int,  # context_length
-        c_int,  # gpu_layers
+        ConfigStruct,  # config
     ]
     lib.ctransformers_llm_create.restype = llm_p
 
@@ -209,8 +228,7 @@ class LLM:
         self._llm = self._lib.ctransformers_llm_create(
             model_path.encode(),
             model_type.encode(),
-            config.context_length,
-            config.gpu_layers,
+            config.to_struct(),
         )
         if self._llm is None:
             raise RuntimeError(

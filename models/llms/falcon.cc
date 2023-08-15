@@ -83,14 +83,15 @@ class falcon_llm : public LLM {
   }
 
  protected:
-  bool Load(const std::string &filename, const int context_length,
-            const int gpu_layers) override {
+  bool Load(const std::string &filename, const Config &config) override {
     falcon_context_params params = falcon_context_default_params();
     params.embedding = true;
-    if (context_length > 0) {
-      params.n_ctx = context_length;
+    if (config.context_length > 0) {
+      params.n_ctx = config.context_length;
     }
-    params.n_gpu_layers = gpu_layers;
+    params.n_gpu_layers = config.gpu_layers;
+    params.use_mmap = config.mmap;
+    params.use_mlock = config.mlock;
 
     ctx_ = falcon_init_from_file(filename.c_str(), params);
     if (ctx_ == nullptr) {

@@ -82,14 +82,15 @@ class llama_llm : public LLM {
   }
 
  protected:
-  bool Load(const std::string &filename, const int context_length,
-            const int gpu_layers) override {
+  bool Load(const std::string &filename, const Config &config) override {
     llama_context_params params = llama_context_default_params();
     params.embedding = true;
-    if (context_length > 0) {
-      params.n_ctx = context_length;
+    if (config.context_length > 0) {
+      params.n_ctx = config.context_length;
     }
-    params.n_gpu_layers = gpu_layers;
+    params.n_gpu_layers = config.gpu_layers;
+    params.use_mmap = config.mmap;
+    params.use_mlock = config.mlock;
     std::regex pattern_70b(R"((\b|_)70b(\b|_))", std::regex_constants::icase);
     if (std::regex_search(filename, pattern_70b)) {
       params.n_gqa = 8;
