@@ -32,6 +32,7 @@ class AutoConfig:
         cls,
         model_path_or_repo_id: str,
         local_files_only: bool = False,
+        revision: Optional[str] = None,
         **kwargs,
     ) -> "AutoConfig":
         path_type = get_path_type(model_path_or_repo_id)
@@ -48,6 +49,7 @@ class AutoConfig:
                 model_path_or_repo_id,
                 auto_config,
                 local_files_only=local_files_only,
+                revision=revision,
             )
 
         for k, v in kwargs.items():
@@ -65,11 +67,13 @@ class AutoConfig:
         repo_id: str,
         auto_config: "AutoConfig",
         local_files_only: bool,
+        revision: Optional[str] = None,
     ) -> None:
         path = snapshot_download(
             repo_id=repo_id,
             allow_patterns="config.json",
             local_files_only=local_files_only,
+            revision=revision,
         )
         cls._update_from_dir(path, auto_config)
 
@@ -110,6 +114,7 @@ class AutoModelForCausalLM:
         config: Optional[AutoConfig] = None,
         lib: Optional[str] = None,
         local_files_only: bool = False,
+        revision: Optional[str] = None,
         **kwargs,
     ) -> LLM:
         """Loads the language model from a local file or remote repo.
@@ -123,6 +128,8 @@ class AutoModelForCausalLM:
             lib: The path to a shared library or one of `avx2`, `avx`, `basic`.
             local_files_only: Whether or not to only look at local files
             (i.e., do not try to download the model).
+            revision: The specific model version to use. It can be a branch
+            name, a tag name, or a commit id.
 
         Returns:
             `LLM` object.
@@ -135,12 +142,14 @@ class AutoModelForCausalLM:
             return gptq.AutoModelForCausalLM.from_pretrained(
                 model_path_or_repo_id,
                 local_files_only=local_files_only,
+                revision=revision,
                 **kwargs,
             )
 
         config = config or AutoConfig.from_pretrained(
             model_path_or_repo_id,
             local_files_only=local_files_only,
+            revision=revision,
             **kwargs,
         )
         model_type = model_type or config.model_type
@@ -163,6 +172,7 @@ class AutoModelForCausalLM:
                 model_path_or_repo_id,
                 model_file,
                 local_files_only=local_files_only,
+                revision=revision,
             )
 
         return LLM(
@@ -178,21 +188,34 @@ class AutoModelForCausalLM:
         repo_id: str,
         filename: Optional[str],
         local_files_only: bool,
+        revision: Optional[str] = None,
     ) -> str:
         if not filename and not local_files_only:
-            filename = cls._find_model_file_from_repo(repo_id=repo_id)
+            filename = cls._find_model_file_from_repo(
+                repo_id=repo_id,
+                revision=revision,
+            )
         allow_patterns = filename or "*.bin"
         path = snapshot_download(
             repo_id=repo_id,
             allow_patterns=allow_patterns,
             local_files_only=local_files_only,
+            revision=revision,
         )
         return cls._find_model_path_from_dir(path, filename=filename)
 
     @classmethod
-    def _find_model_file_from_repo(cls, repo_id: str) -> Optional[str]:
+    def _find_model_file_from_repo(
+        cls,
+        repo_id: str,
+        revision: Optional[str] = None,
+    ) -> Optional[str]:
         api = HfApi()
-        repo_info = api.repo_info(repo_id=repo_id, files_metadata=True)
+        repo_info = api.repo_info(
+            repo_id=repo_id,
+            files_metadata=True,
+            revision=revision,
+        )
         files = [
             (f.size, f.rfilename)
             for f in repo_info.siblings
