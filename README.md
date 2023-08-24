@@ -1,4 +1,4 @@
-# [C Transformers](https://github.com/marella/ctransformers) [![PyPI](https://img.shields.io/pypi/v/ctransformers)](https://pypi.org/project/ctransformers/) [![tests](https://github.com/marella/ctransformers/actions/workflows/tests.yml/badge.svg)](https://github.com/marella/ctransformers/actions/workflows/tests.yml) [![build](https://github.com/marella/ctransformers/actions/workflows/build.yml/badge.svg)](https://github.com/marella/ctransformers/actions/workflows/build.yml)
+# [CTransformers](https://github.com/marella/ctransformers) [![PyPI](https://img.shields.io/pypi/v/ctransformers)](https://pypi.org/project/ctransformers/) [![tests](https://github.com/marella/ctransformers/actions/workflows/tests.yml/badge.svg)](https://github.com/marella/ctransformers/actions/workflows/tests.yml) [![build](https://github.com/marella/ctransformers/actions/workflows/build.yml/badge.svg)](https://github.com/marella/ctransformers/actions/workflows/build.yml)
 
 Python bindings for the Transformer models implemented in C/C++ using [GGML](https://github.com/ggerganov/ggml) library.
 
@@ -41,35 +41,18 @@ It provides a unified interface for all models:
 ```py
 from ctransformers import AutoModelForCausalLM
 
-llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-gpt-2.bin', model_type='gpt2')
+llm = AutoModelForCausalLM.from_pretrained("/path/to/ggml-model.bin", model_type="gpt2")
 
-print(llm('AI is going to'))
+print(llm("AI is going to"))
 ```
 
 [Run in Google Colab](https://colab.research.google.com/drive/1GMhYMUAv_TyZkpfvUI1NirM8-9mCXQyL)
 
-> **Note:** In order to use LLaMA 2 70B models, the model path or repo name must contain the word `70B`. For example, `llama-2-70b.bin`, `llama-2-70b/ggml-model.bin`, `TheBloke/Llama-2-70B-GGML` etc.
-
-It provides a generator interface for more control:
+To stream the output, set `stream=True`:
 
 ```py
-tokens = llm.tokenize('AI is going to')
-
-for token in llm.generate(tokens):
-    print(llm.detokenize(token))
-```
-
-It can be used with a custom or Hugging Face tokenizer:
-
-```py
-from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained('gpt2')
-
-tokens = tokenizer.encode('AI is going to')
-
-for token in llm.generate(tokens):
-    print(tokenizer.decode(token))
+for text in llm("AI is going to", stream=True):
+    print(text, end="", flush=True)
 ```
 
 It also provides access to the low-level C API. See [Documentation](#documentation) section below.
@@ -79,28 +62,14 @@ It also provides access to the low-level C API. See [Documentation](#documentati
 It can be used with models hosted on the Hub:
 
 ```py
-llm = AutoModelForCausalLM.from_pretrained('marella/gpt-2-ggml')
+llm = AutoModelForCausalLM.from_pretrained("marella/gpt-2-ggml")
 ```
 
-If a model repo has multiple model files (`.bin` files), specify a model file using:
+If a model repo has multiple model files (`.bin` or `.gguf` files), specify a model file using:
 
 ```py
-llm = AutoModelForCausalLM.from_pretrained('marella/gpt-2-ggml', model_file='ggml-model.bin')
+llm = AutoModelForCausalLM.from_pretrained("marella/gpt-2-ggml", model_file="ggml-model.bin")
 ```
-
-It can be used with your own models uploaded on the Hub. For better user experience, upload only one model per repo.
-
-To use it with your own model, add `config.json` file to your model repo specifying the `model_type`:
-
-```json
-{
-  "model_type": "gpt2"
-}
-```
-
-You can also specify additional parameters under `task_specific_params.text-generation`.
-
-See [marella/gpt-2-ggml](https://huggingface.co/marella/gpt-2-ggml/blob/main/config.json) for a minimal example and [marella/gpt-2-ggml-example](https://huggingface.co/marella/gpt-2-ggml-example/blob/main/config.json) for a full example.
 
 ### LangChain
 
@@ -111,7 +80,7 @@ It is integrated into LangChain. See [LangChain docs](https://python.langchain.c
 To run some of the model layers on GPU, set the `gpu_layers` parameter:
 
 ```py
-llm = AutoModelForCausalLM.from_pretrained('/path/to/ggml-llama.bin', model_type='llama', gpu_layers=50)
+llm = AutoModelForCausalLM.from_pretrained("TheBloke/Llama-2-7B-GGML", gpu_layers=50)
 ```
 
 [Run in Google Colab](https://colab.research.google.com/drive/1Ihn7iPCYiqlTotpkqa1tOhUIpJBrJ1Tp)
