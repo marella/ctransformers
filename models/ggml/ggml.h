@@ -346,6 +346,7 @@ extern "C" {
         GGML_OP_ARGMAX,
         GGML_OP_REPEAT,
         GGML_OP_REPEAT_BACK,
+        GGML_OP_REPEAT2,
         GGML_OP_CONCAT,
         GGML_OP_SILU_BACK,
         GGML_OP_NORM, // normalize
@@ -812,6 +813,8 @@ extern "C" {
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
             struct ggml_tensor  * b);
+
+    #include "ggml/ggml-ggllm.h"
 
     // concat a and b on dim 2
     // used in stable-diffusion

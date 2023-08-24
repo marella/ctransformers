@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cuda_runtime.h>
 #include "ggml.h"
 
 #ifdef  __cplusplus
@@ -32,6 +33,8 @@ GGML_API bool   ggml_cuda_compute_forward(struct ggml_compute_params * params, s
 
 GGML_API int    ggml_cuda_get_device_count(void);
 GGML_API void   ggml_cuda_get_device_description(int device, char * description, size_t description_size);
+
+#include "ggml-cuda-ggllm.h"
 
 #ifdef  __cplusplus
 }

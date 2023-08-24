@@ -4856,6 +4856,7 @@ struct scoped_spin_lock {
 struct cuda_buffer {
     void * ptr = nullptr;
     size_t size = 0;
+    int access_count = 0;
 };
 
 static cuda_buffer g_cuda_buffer_pool[GGML_CUDA_MAX_DEVICES][MAX_CUDA_BUFFERS];
@@ -6623,3 +6624,5 @@ void ggml_cuda_get_device_description(int device, char * description, size_t des
     CUDA_CHECK(cudaGetDeviceProperties(&prop, device));
     snprintf(description, description_size, "%s", prop.name);
 }
+
+#include "ggml-cuda-ggllm.cu"
