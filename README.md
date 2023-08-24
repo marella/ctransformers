@@ -220,7 +220,7 @@ Loads the language model from a local file or remote repo.
 ```python
 __init__(
     model_path: str,
-    model_type: str,
+    model_type: Optional[str] = None,
     config: Optional[ctransformers.llm.Config] = None,
     lib: Optional[str] = None
 )

@@ -1,5 +1,13 @@
 from collections.abc import MutableSequence
-from typing import Any, Tuple
+from pathlib import Path
+from typing import Any, Tuple, Union
+
+
+def is_gguf(path: Union[str, Path]) -> bool:
+    path = str(Path(path).resolve())
+    with open(path, "rb") as f:
+        magic = f.read(4)
+    return magic == "GGUF".encode()
 
 
 class Vector(MutableSequence):

@@ -26,7 +26,7 @@ from typing import (
 )
 
 from .lib import find_library, load_cuda
-from .utils import Vector, utf8_split_incomplete
+from .utils import is_gguf, Vector, utf8_split_incomplete
 
 c_int_p = POINTER(c_int)
 c_float_p = POINTER(c_float)
@@ -161,6 +161,9 @@ def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
     lib.ctransformers_llm_context_length.argtypes = [llm_p]
     lib.ctransformers_llm_context_length.restype = c_int
 
+    lib.ctransformers_llm_architecture.argtypes = [llm_p]
+    lib.ctransformers_llm_architecture.restype = c_char_p
+
     lib.ctransformers_llm_batch_eval.argtypes = [
         llm_p,
         c_int_p,  # tokens
@@ -201,7 +204,7 @@ class LLM:
     def __init__(
         self,
         model_path: str,
-        model_type: str,
+        model_type: Optional[str] = None,
         *,
         config: Optional[Config] = None,
         lib: Optional[str] = None,
@@ -216,13 +219,20 @@ class LLM:
         """
         config = config or Config()
         self._model_path = model_path
-        self._model_type = model_type
         self._config = config
         self._llm = None
         self._lib = None
 
         if not Path(model_path).is_file():
             raise ValueError(f"Model path '{model_path}' doesn't exist.")
+
+        if not model_type:
+            if not is_gguf(model_path):
+                raise ValueError(
+                    "Unable to detect model type. Please specify a model type using:\n\n"
+                    "  AutoModelForCausalLM.from_pretrained(..., model_type='...')\n\n"
+                )
+            model_type = "gguf"
 
         self._lib = load_library(lib, cuda=config.gpu_layers > 0)
         self._llm = self._lib.ctransformers_llm_create(
@@ -234,6 +244,10 @@ class LLM:
             raise RuntimeError(
                 f"Failed to create LLM '{model_type}' from '{model_path}'."
             )
+        architecture = self.ctransformers_llm_architecture().decode()
+        if architecture:
+            model_type = architecture
+        self._model_type = model_type
 
     @property
     def model_path(self) -> str:

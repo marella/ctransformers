@@ -153,6 +153,8 @@ class LLM {
 
   int ContextLength() const { return n_ctx_; }
 
+  virtual const std::string &Architecture() const { return kEmptyString; }
+
   void Reset() {
     logits_.clear();
     previous_tokens_.Clear();

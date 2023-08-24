@@ -2,15 +2,12 @@
 
 // https://github.com/ggerganov/llama.cpp/blob/master/examples/main/main.cpp
 
-#include "ggml/llama.cpp"
+#include "ggml/llama-ggml.cpp"
 
-static void ct_llama_log_callback(llama_log_level level, const char *text,
-                                  void *user_data) {}
+namespace llama_ggml {
 
 class llama_llm : public LLM {
  public:
-  llama_llm() { llama_log_set(ct_llama_log_callback, nullptr); }
-
   virtual ~llama_llm() {
     if (ctx_ != nullptr) {
       llama_free(ctx_);
@@ -18,30 +15,23 @@ class llama_llm : public LLM {
   }
 
   std::vector<gpt_vocab::id> Tokenize(const std::string &text) const override {
-    const bool escape = llama_vocab_type(ctx_) == LLAMA_VOCAB_TYPE_SPM;
-    return llama_tokenize_internal(ctx_->model.vocab, text, /*bos=*/true,
-                                   escape);
+    return llama_tokenize(ctx_->model.vocab, text, /*bos=*/true);
   }
 
   const std::string &Detokenize(const gpt_vocab::id id) const override {
     if (id >= llama_n_vocab(ctx_)) {
       return kEmptyString;
     }
-    detokenized_text_ = llama_token_to_text(ctx_, id);
-    return detokenized_text_;
+    return ctx_->model.vocab.id_to_token[id].tok;
   }
 
   bool IsEosToken(const gpt_vocab::id token) const override {
     return token == EosToken();
   }
 
-  gpt_vocab::id EosToken() const override { return llama_token_eos(ctx_); }
+  gpt_vocab::id EosToken() const override { return llama_token_eos(); }
 
   int VocabSize() const override { return llama_n_vocab(ctx_); }
-
-  const std::string &Architecture() const override {
-    return LLM_ARCH_NAMES.at(ctx_->model.arch);
-  }
 
   std::vector<float> &Logits() override { return ctx_->logits; }
 
@@ -103,6 +93,10 @@ class llama_llm : public LLM {
     params.n_gpu_layers = config.gpu_layers;
     params.use_mmap = config.mmap;
     params.use_mlock = config.mlock;
+    std::regex pattern_70b(R"((\b|_)70b(\b|_))", std::regex_constants::icase);
+    if (std::regex_search(filename, pattern_70b)) {
+      params.n_gqa = 8;
+    }
 
     llama_model *model = llama_load_model_from_file(filename.c_str(), params);
     ctx_ = llama_new_context_with_model(model, params);
@@ -123,5 +117,6 @@ class llama_llm : public LLM {
 
  private:
   llama_context *ctx_ = nullptr;
-  mutable std::string detokenized_text_;
 };
+
+}  // namespace llama_ggml

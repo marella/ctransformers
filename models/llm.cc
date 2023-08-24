@@ -9,8 +9,25 @@
 #include "llms/replit.cc"
 #include "llms/starcoder.cc"
 
+// Old ggml file format.
+#include "llms/llama-ggml.cc"
 // Import falcon after llama.
 #include "llms/falcon.cc"
+
+bool is_gguf(const char* filename) {
+  FILE* file = fopen(filename, "rb");
+  if (!file) {
+    return false;
+  }
+  uint32_t magic = 0;
+  const size_t size = sizeof(magic);
+  const size_t read = fread(&magic, 1, size, file);
+  fclose(file);
+  if (read != size) {
+    return false;
+  }
+  return magic == GGUF_MAGIC;
+}
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,7 +42,9 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
              type.end());
 
   LLM* llm = nullptr;
-  if (type == "dollyv2") {
+  if (type == "gguf" || is_gguf(model_path)) {
+    llm = new llama_llm;
+  } else if (type == "dollyv2") {
     llm = new dollyv2_llm;
   } else if (type == "falcon") {
     llm = new falcon_llm;
@@ -36,7 +55,7 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
   } else if (type == "gptneox") {
     llm = new gpt_neox_llm;
   } else if (type == "llama") {
-    llm = new llama_llm;
+    llm = new llama_ggml::llama_llm;
   } else if (type == "mpt") {
     llm = new mpt_llm;
   } else if (type == "replit") {
@@ -77,6 +96,10 @@ int ctransformers_llm_eos_token_id(LLM* llm) { return llm->EosToken(); }
 int ctransformers_llm_vocab_size(LLM* llm) { return llm->VocabSize(); }
 
 int ctransformers_llm_context_length(LLM* llm) { return llm->ContextLength(); }
+
+const char* ctransformers_llm_architecture(LLM* llm) {
+  return llm->Architecture().c_str();
+}
 
 bool ctransformers_llm_batch_eval(LLM* llm, const int* tokens,
                                   const int n_tokens, const int batch_size,

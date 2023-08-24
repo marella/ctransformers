@@ -153,11 +153,6 @@ class AutoModelForCausalLM:
             **kwargs,
         )
         model_type = model_type or config.model_type
-        if not model_type:
-            raise ValueError(
-                "Unable to detect model type. Please specify a model type using:\n\n"
-                "  AutoModelForCausalLM.from_pretrained(..., model_type='...')\n\n"
-            )
 
         path_type = get_path_type(model_path_or_repo_id)
         model_path = None
@@ -195,7 +190,7 @@ class AutoModelForCausalLM:
                 repo_id=repo_id,
                 revision=revision,
             )
-        allow_patterns = filename or "*.bin"
+        allow_patterns = filename or ["*.bin", "*.gguf"]
         path = snapshot_download(
             repo_id=repo_id,
             allow_patterns=allow_patterns,
@@ -219,7 +214,7 @@ class AutoModelForCausalLM:
         files = [
             (f.size, f.rfilename)
             for f in repo_info.siblings
-            if f.rfilename.endswith(".bin")
+            if f.rfilename.endswith(".bin") or f.rfilename.endswith(".gguf")
         ]
         if not files:
             raise ValueError(f"No model file found in repo '{repo_id}'")
@@ -241,7 +236,7 @@ class AutoModelForCausalLM:
         files = [
             (f.stat().st_size, f)
             for f in path.iterdir()
-            if f.is_file() and f.name.endswith(".bin")
+            if f.is_file() and (f.name.endswith(".bin") or f.name.endswith(".gguf"))
         ]
         if not files:
             raise ValueError(f"No model file found in directory '{path}'")

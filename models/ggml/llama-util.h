@@ -46,26 +46,7 @@
         } \
     } while (0)
 
-#ifdef __GNUC__
-#ifdef __MINGW32__
-__attribute__((format(gnu_printf, 1, 2)))
-#else
-__attribute__((format(printf, 1, 2)))
-#endif
-#endif
-static std::string format(const char * fmt, ...) {
-    va_list ap, ap2;
-    va_start(ap, fmt);
-    va_copy(ap2, ap);
-    int size = vsnprintf(NULL, 0, fmt, ap);
-    LLAMA_ASSERT(size >= 0 && size < INT_MAX);
-    std::vector<char> buf(size + 1);
-    int size2 = vsnprintf(buf.data(), size + 1, fmt, ap2);
-    LLAMA_ASSERT(size2 == size);
-    va_end(ap2);
-    va_end(ap);
-    return std::string(buf.data(), size);
-}
+namespace llama_ggml {
 
 struct llama_file {
     // use FILE * so we don't have to re-open the file to mmap
@@ -540,5 +521,7 @@ struct llama_ctx_buffer {
 #else
 typedef llama_buffer llama_ctx_buffer;
 #endif
+
+}  // namespace llama_ggml
 
 #endif

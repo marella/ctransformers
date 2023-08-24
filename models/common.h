@@ -206,6 +206,12 @@ gpt_vocab::id gpt_sample_top_k_top_p(
   return logits_id[idx].second;
 }
 
+// Temporary
+
+struct ggml_tensor *ggml_norm(struct ggml_context *ctx, struct ggml_tensor *a) {
+  return ggml_norm(ctx, a, 1e-5f);
+}
+
 // CUDA
 
 // https://github.com/ggerganov/llama.cpp/blob/332311234a0aa2974b2450710e22e09d90dd6b0b/llama.cpp#L719-L740

@@ -190,7 +190,7 @@ struct falcon_kv_cache {
 
   struct ggml_context* ctx = NULL;
 
-  llama_ctx_buffer buf;
+  llama_ggml::llama_ctx_buffer buf;
 
   int n;  // number of tokens currently in the cache
 
@@ -488,10 +488,10 @@ struct falcon_model {
   struct falcon_kv_cache kv_self;
 
   // the model memory buffer
-  llama_ctx_buffer buf;
+  llama_ggml::llama_ctx_buffer buf;
 
   // model memory mapped file
-  std::unique_ptr<llama_mmap> mapping;
+  std::unique_ptr<llama_ggml::llama_mmap> mapping;
 
   // objects representing data potentially being locked in memory
   llama_mlock mlock_buf;
@@ -550,8 +550,8 @@ struct falcon_context {
 
   // memory buffers used to evaluate the model
   // TODO: move in llama_state
-  llama_ctx_buffer buf_compute;
-  llama_ctx_buffer buf_scratch[LLAMA_MAX_SCRATCH_BUFFERS];
+  llama_ggml::llama_ctx_buffer buf_compute;
+  llama_ggml::llama_ctx_buffer buf_scratch[LLAMA_MAX_SCRATCH_BUFFERS];
 
 #ifdef GGML_USE_METAL
   ggml_metal_context* ctx_metal = NULL;
@@ -607,7 +607,7 @@ struct falcon_load_tensor_shard {
   size_t file_idx;
   size_t file_off;
 
-  void calc_size() { size = llama_calc_tensor_size(ne, type); }
+  void calc_size() { size = llama_ggml::llama_calc_tensor_size(ne, type); }
 };
 
 enum falcon_split_type { SPLIT_NONE, SPLIT_BY_COLUMNS, SPLIT_BY_ROWS };
@@ -664,8 +664,9 @@ struct falcon_load_tensor {
         throw std::runtime_error(format(
             "inconsistent tensor shard shape in '%s': first was %s, other was "
             "%s",
-            name.c_str(), llama_format_tensor_shape(first_shard.ne).c_str(),
-            llama_format_tensor_shape(shard.ne).c_str()));
+            name.c_str(),
+            llama_ggml::llama_format_tensor_shape(first_shard.ne).c_str(),
+            llama_ggml::llama_format_tensor_shape(shard.ne).c_str()));
       }
     }
     ne = first_shard.ne;
@@ -676,17 +677,17 @@ struct falcon_load_tensor {
         ne = first_shard.ne;
         break;
       case SPLIT_BY_COLUMNS:
-        ne = {checked_mul<uint32_t>(first_shard.ne[0], n_shards),
+        ne = {llama_ggml::checked_mul<uint32_t>(first_shard.ne[0], n_shards),
               first_shard.ne[1]};
         break;
       case SPLIT_BY_ROWS:
         ne = {first_shard.ne[0],
-              checked_mul<uint32_t>(first_shard.ne[1], n_shards)};
+              llama_ggml::checked_mul<uint32_t>(first_shard.ne[1], n_shards)};
         break;
     }
   }
 
-  void calc_size() { size = llama_calc_tensor_size(ne, type); }
+  void calc_size() { size = llama_ggml::llama_calc_tensor_size(ne, type); }
 };
 
 struct falcon_load_tensors_map {
@@ -712,7 +713,7 @@ enum falcon_file_version {
 };
 
 struct falcon_file_loader {
-  llama_file file;
+  llama_ggml::llama_file file;
   falcon_file_version file_version;
   falcon_hparams hparams;
   falcon_vocab vocab;
@@ -931,7 +932,7 @@ struct falcon_file_loader {
 };
 
 struct falcon_file_saver {
-  llama_file file;
+  llama_ggml::llama_file file;
   falcon_file_loader* any_file_loader;
   falcon_file_saver(const char* fname, falcon_file_loader* any_file_loader,
                     enum llama_ftype new_ftype)
@@ -1007,7 +1008,8 @@ struct falcon_file_saver {
     file.write_raw(tensor.ne.data(), sizeof(tensor.ne[0]) * tensor.ne.size());
     file.write_raw(tensor.name.data(), tensor.name.size());
     file.seek(-static_cast<ptrdiff_t>(file.tell()) & 31, SEEK_CUR);
-    LLAMA_ASSERT(new_size == llama_calc_tensor_size(tensor.ne, new_type));
+    LLAMA_ASSERT(new_size ==
+                 llama_ggml::llama_calc_tensor_size(tensor.ne, new_type));
     file.write_raw(new_data, new_size);
   }
 };
@@ -1018,7 +1020,7 @@ struct falcon_model_loader {
   bool use_mmap;
   size_t num_ggml_tensors_created = 0;
   struct ggml_context* ggml_ctx = NULL;
-  std::unique_ptr<llama_mmap> mapping;
+  std::unique_ptr<llama_ggml::llama_mmap> mapping;
 
   falcon_model_loader(const std::string& fname_base, bool use_mmap,
                       bool vocab_only) {
@@ -1035,7 +1037,7 @@ struct falcon_model_loader {
             format("falcon.cpp: hparams inconsistent between files"));
       }
     }
-    if (!llama_mmap::SUPPORTED) {
+    if (!llama_ggml::llama_mmap::SUPPORTED) {
       use_mmap = false;
     }
     if (use_mmap && alignment_prevents_mmap()) {
@@ -1098,11 +1100,11 @@ struct falcon_model_loader {
       if (lt.ne != ne) {
         throw std::runtime_error(format(
             "falcon.cpp: tensor '%s' has wrong shape; expected %s, got %s",
-            name.c_str(), llama_format_tensor_shape(ne).c_str(),
-            llama_format_tensor_shape(lt.ne).c_str()));
+            name.c_str(), llama_ggml::llama_format_tensor_shape(ne).c_str(),
+            llama_ggml::llama_format_tensor_shape(lt.ne).c_str()));
       }
     // printf("Tensor: %-70s %s\n", name.c_str(),
-    // llama_format_tensor_shape(lt.ne).c_str());
+    // llama_ggml::llama_format_tensor_shape(lt.ne).c_str());
 
     return get_tensor_for(lt, backend);
   }
@@ -1166,7 +1168,8 @@ struct falcon_model_loader {
     }
 
     if (use_mmap) {
-      mapping.reset(new llama_mmap(&file_loaders.at(0)->file, prefetch_size));
+      mapping.reset(
+          new llama_ggml::llama_mmap(&file_loaders.at(0)->file, prefetch_size));
       if (lmlock) {
         lmlock->init(mapping->addr);
       }
@@ -1238,13 +1241,14 @@ struct falcon_model_loader {
       LLAMA_ASSERT(lt.shards.size() == 1);
       lt.data = (uint8_t*)mapping->addr + lt.shards.at(0).file_off;
     } else if (lt.split_type == SPLIT_NONE) {
-      llama_file& file = file_loaders.at(lt.shards.at(0).file_idx)->file;
+      llama_ggml::llama_file& file =
+          file_loaders.at(lt.shards.at(0).file_idx)->file;
       file.seek(lt.shards.at(0).file_off, SEEK_SET);
       file.read_raw(lt.data, lt.size);
     } else if (lt.split_type == SPLIT_BY_ROWS) {
       size_t offset = 0;
       for (falcon_load_tensor_shard& shard : lt.shards) {
-        llama_file& file = file_loaders.at(shard.file_idx)->file;
+        llama_ggml::llama_file& file = file_loaders.at(shard.file_idx)->file;
         file.seek(shard.file_off, SEEK_SET);
         file.read_raw(lt.data + offset, shard.size);
         offset += shard.size;
@@ -1253,10 +1257,10 @@ struct falcon_model_loader {
     } else if (lt.split_type == SPLIT_BY_COLUMNS) {
       // Let's load the data into temporary buffers to ensure the OS performs
       // large loads.
-      std::vector<llama_buffer> tmp_bufs(lt.shards.size());
+      std::vector<llama_ggml::llama_buffer> tmp_bufs(lt.shards.size());
       for (size_t i = 0; i < lt.shards.size(); i++) {
         falcon_load_tensor_shard& shard = lt.shards.at(i);
-        llama_file& file = file_loaders.at(shard.file_idx)->file;
+        llama_ggml::llama_file& file = file_loaders.at(shard.file_idx)->file;
         file.seek(shard.file_off, SEEK_SET);
         tmp_bufs.at(i).resize(shard.size);
         file.read_raw(tmp_bufs.at(i).addr, shard.size);
@@ -1266,7 +1270,7 @@ struct falcon_model_loader {
       size_t per_shard_row_size = lt.shards.at(0).size / num_rows;
       size_t out_offset = 0;
       for (size_t row = 0; row < num_rows; row++) {
-        for (llama_buffer& tmp_buf : tmp_bufs) {
+        for (llama_ggml::llama_buffer& tmp_buf : tmp_bufs) {
           memcpy(lt.data + out_offset, tmp_buf.addr + row * per_shard_row_size,
                  per_shard_row_size);
           out_offset += per_shard_row_size;
@@ -1286,7 +1290,7 @@ struct falcon_model_loader {
       sum = byte + (sum << 6) + (sum << 16) - sum;  // sdbm hash
     }
     fprintf(stderr, "%s checksum: %#08x (%s, size %zu)\n", lt.name.c_str(), sum,
-            llama_format_tensor_shape(lt.ne).c_str(), lt.size);
+            llama_ggml::llama_format_tensor_shape(lt.ne).c_str(), lt.size);
   }
 };
 
@@ -3700,7 +3704,7 @@ int falcon_apply_lora_from_file_internal(struct falcon_context* ctx,
   // load base model
   std::unique_ptr<falcon_model_loader> model_loader;
   ggml_context* base_ctx = NULL;
-  llama_buffer base_buf;
+  llama_ggml::llama_buffer base_buf;
   if (path_base_model) {
     fprintf(stderr, "%s: loading base model from '%s'\n", __func__,
             path_base_model);
@@ -3723,7 +3727,7 @@ int falcon_apply_lora_from_file_internal(struct falcon_context* ctx,
 
     // maybe this should in falcon_model_loader
     if (model_loader->use_mmap) {
-      model_loader->mapping.reset(new llama_mmap(
+      model_loader->mapping.reset(new llama_ggml::llama_mmap(
           &model_loader->file_loaders.at(0)->file, /* prefetch */ 0));
     }
   }
@@ -4234,7 +4238,7 @@ static bool falcon_load_session_file_internal(struct falcon_context* ctx,
                                               falcon_token* tokens_out,
                                               size_t n_token_capacity,
                                               size_t* n_token_count_out) {
-  llama_file file(path_session, "rb");
+  llama_ggml::llama_file file(path_session, "rb");
 
   // sanity checks
   {
@@ -4312,7 +4316,7 @@ bool falcon_save_session_file(struct falcon_context* ctx,
                               const char* path_session,
                               const falcon_token* tokens,
                               size_t n_token_count) {
-  llama_file file(path_session, "wb");
+  llama_ggml::llama_file file(path_session, "wb");
 
   file.write_u32(LLAMA_SESSION_MAGIC);
   file.write_u32(LLAMA_SESSION_VERSION);
