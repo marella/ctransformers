@@ -349,6 +349,9 @@ class LLM:
         texts = b"".join(texts)
         if decode:
             texts = texts.decode(errors="ignore")
+            # https://github.com/ggerganov/llama.cpp/blob/43033b7bb4858da4f591715b3babdf906c9b7cbc/common/common.cpp#L778-L781
+            if tokens[:1] == [self.bos_token_id] and texts[:1] == " ":
+                texts = texts[1:]
         return texts
 
     def is_eos_token(self, token: int) -> bool:
