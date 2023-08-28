@@ -77,8 +77,9 @@ LLM* ctransformers_llm_create(const char* model_path, const char* model_type,
 
 void ctransformers_llm_delete(LLM* llm) { delete llm; }
 
-int ctransformers_llm_tokenize(LLM* llm, const char* text, int* output) {
-  const std::vector<gpt_vocab::id> tokens = llm->Tokenize(text);
+int ctransformers_llm_tokenize(LLM* llm, const char* text,
+                               const bool add_bos_token, int* output) {
+  const std::vector<gpt_vocab::id> tokens = llm->Tokenize(text, add_bos_token);
   std::copy(tokens.begin(), tokens.end(), output);
   return tokens.size();
 }
@@ -92,6 +93,8 @@ bool ctransformers_llm_is_eos_token(LLM* llm, const int token) {
 }
 
 int ctransformers_llm_eos_token_id(LLM* llm) { return llm->EosToken(); }
+
+int ctransformers_llm_bos_token_id(LLM* llm) { return llm->BosToken(); }
 
 int ctransformers_llm_vocab_size(LLM* llm) { return llm->VocabSize(); }
 

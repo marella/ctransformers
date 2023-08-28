@@ -12,7 +12,8 @@ class falcon_llm : public LLM {
     }
   }
 
-  std::vector<gpt_vocab::id> Tokenize(const std::string &text) const override {
+  std::vector<gpt_vocab::id> Tokenize(const std::string &text,
+                                      const bool add_bos_token) const override {
     return falcon_tokenize(ctx_->vocab, text, /*bos=*/false, /*g2ws=*/true);
   }
 

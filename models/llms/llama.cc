@@ -17,9 +17,10 @@ class llama_llm : public LLM {
     }
   }
 
-  std::vector<gpt_vocab::id> Tokenize(const std::string &text) const override {
+  std::vector<gpt_vocab::id> Tokenize(const std::string &text,
+                                      const bool add_bos_token) const override {
     const bool escape = llama_vocab_type(ctx_) == LLAMA_VOCAB_TYPE_SPM;
-    return llama_tokenize_internal(ctx_->model.vocab, text, /*bos=*/true,
+    return llama_tokenize_internal(ctx_->model.vocab, text, add_bos_token,
                                    escape);
   }
 
@@ -36,6 +37,8 @@ class llama_llm : public LLM {
   }
 
   gpt_vocab::id EosToken() const override { return llama_token_eos(ctx_); }
+
+  gpt_vocab::id BosToken() const override { return llama_token_bos(ctx_); }
 
   int VocabSize() const override { return llama_n_vocab(ctx_); }
 

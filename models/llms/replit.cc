@@ -627,7 +627,8 @@ class replit_llm : public LLM {
     }
   }
 
-  std::vector<gpt_vocab::id> Tokenize(const std::string &text) const override {
+  std::vector<gpt_vocab::id> Tokenize(const std::string &text,
+                                      const bool add_bos_token) const override {
     // tokenize the prompt
     std::vector<gpt_vocab::id> embd_inp =
         replit_tokenizer_tokenize(replit_tokenizer_, text);

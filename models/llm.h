@@ -73,7 +73,8 @@ class LLM {
     return initialized_ = true;
   }
 
-  virtual std::vector<gpt_vocab::id> Tokenize(const std::string &text) const {
+  virtual std::vector<gpt_vocab::id> Tokenize(const std::string &text,
+                                              const bool add_bos_token) const {
     return gpt_tokenize(vocab_, text);
   }
 
@@ -148,6 +149,8 @@ class LLM {
     }
     return 0;
   }
+
+  virtual gpt_vocab::id BosToken() const { return EosToken(); }
 
   virtual int VocabSize() const { return vocab_.id_to_token.size(); }
 

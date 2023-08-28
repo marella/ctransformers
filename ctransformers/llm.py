@@ -136,6 +136,7 @@ def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
     lib.ctransformers_llm_tokenize.argtypes = [
         llm_p,
         c_char_p,  # text
+        c_bool,  # add_bos_token
         c_int_p,  # output
     ]
     lib.ctransformers_llm_tokenize.restype = c_int
@@ -154,6 +155,9 @@ def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
 
     lib.ctransformers_llm_eos_token_id.argtypes = [llm_p]
     lib.ctransformers_llm_eos_token_id.restype = c_int
+
+    lib.ctransformers_llm_bos_token_id.argtypes = [llm_p]
+    lib.ctransformers_llm_bos_token_id.restype = c_int
 
     lib.ctransformers_llm_vocab_size.argtypes = [llm_p]
     lib.ctransformers_llm_vocab_size.restype = c_int
@@ -270,6 +274,11 @@ class LLM:
         return self.ctransformers_llm_eos_token_id()
 
     @property
+    def bos_token_id(self) -> int:
+        """The beginning-of-sequence token."""
+        return self.ctransformers_llm_bos_token_id()
+
+    @property
     def vocab_size(self) -> int:
         """The number of tokens in vocabulary."""
         return self.ctransformers_llm_vocab_size()
@@ -301,17 +310,20 @@ class LLM:
             return partial(getattr(lib, name), llm)
         raise AttributeError(f"'LLM' object has no attribute '{name}'")
 
-    def tokenize(self, text: str) -> List[int]:
+    def tokenize(self, text: str, add_bos_token: Optional[bool] = None) -> List[int]:
         """Converts a text into list of tokens.
 
         Args:
             text: The text to tokenize.
+            add_bos_token: Whether to add the beginning-of-sequence token.
 
         Returns:
             The list of tokens.
         """
+        if add_bos_token is None:
+            add_bos_token = self.model_type == "llama"
         tokens = (c_int * (len(text) + 1))()
-        n_tokens = self.ctransformers_llm_tokenize(text.encode(), tokens)
+        n_tokens = self.ctransformers_llm_tokenize(text.encode(), add_bos_token, tokens)
         return tokens[:n_tokens]
 
     def detokenize(

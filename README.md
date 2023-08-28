@@ -206,6 +206,12 @@ Loads the language model from a local file.
 
 ---
 
+##### <kbd>property</kbd> LLM.bos_token_id
+
+The beginning-of-sequence token.
+
+---
+
 ##### <kbd>property</kbd> LLM.config
 
 The config object.
@@ -413,7 +419,7 @@ The sampled token.
 #### <kbd>method</kbd> `LLM.tokenize`
 
 ```python
-tokenize(text: str) → List[int]
+tokenize(text: str, add_bos_token: Optional[bool] = None) → List[int]
 ```
 
 Converts a text into list of tokens.
@@ -421,6 +427,7 @@ Converts a text into list of tokens.
 **Args:**
 
 - <b>`text`</b>: The text to tokenize.
+- <b>`add_bos_token`</b>: Whether to add the beginning-of-sequence token.
 
 **Returns:**
 The list of tokens.
