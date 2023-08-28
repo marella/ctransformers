@@ -93,6 +93,14 @@ Install CUDA libraries using:
 pip install ctransformers[cuda]
 ```
 
+#### ROCm
+
+To enable ROCm support, install the `ctransformers` package using:
+
+```sh
+CT_HIPBLAS=1 pip install ctransformers --no-binary ctransformers
+```
+
 #### Metal
 
 To enable Metal support, install the `ctransformers` package using:
