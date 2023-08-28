@@ -1,3 +1,9 @@
+#if defined(GGML_USE_HIPBLAS)
+#ifndef cudaMemGetInfo
+#define cudaMemGetInfo hipMemGetInfo
+#endif
+#endif
+
 // https://github.com/cmp-nct/ggllm.cpp/blob/master/ggml-cuda.cu
 
 static GPUStatus g_system_gpu_status;

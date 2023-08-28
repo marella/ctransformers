@@ -19,16 +19,14 @@ class llama_llm : public LLM {
 
   std::vector<gpt_vocab::id> Tokenize(const std::string &text,
                                       const bool add_bos_token) const override {
-    const bool escape = llama_vocab_type(ctx_) == LLAMA_VOCAB_TYPE_SPM;
-    return llama_tokenize_internal(ctx_->model.vocab, text, add_bos_token,
-                                   escape);
+    return llama_tokenize_internal(ctx_->model.vocab, text, add_bos_token);
   }
 
   const std::string &Detokenize(const gpt_vocab::id id) const override {
     if (id >= llama_n_vocab(ctx_)) {
       return kEmptyString;
     }
-    detokenized_text_ = llama_token_to_text(ctx_, id);
+    detokenized_text_ = llama_token_to_str(ctx_, id);
     return detokenized_text_;
   }
 

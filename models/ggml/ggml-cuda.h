@@ -1,7 +1,16 @@
 #pragma once
 
-#include <cuda_runtime.h>
 #include "ggml.h"
+
+#ifdef GGML_USE_HIPBLAS
+#include <hip/hip_runtime.h>
+#define GGML_CUDA_NAME "ROCm"
+#define GGML_CUBLAS_NAME "hipBLAS"
+#else
+#include <cuda_runtime.h>
+#define GGML_CUDA_NAME "CUDA"
+#define GGML_CUBLAS_NAME "cuBLAS"
+#endif
 
 #ifdef  __cplusplus
 extern "C" {

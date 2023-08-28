@@ -3131,8 +3131,6 @@ int llama_get_kv_cache_token_count(const struct llama_context *ctx) {
   return ctx->kv_self.n;
 }
 
-#define LLAMA_MAX_RNG_STATE (64 * 1024)
-
 void llama_set_rng_seed(struct llama_context *ctx, uint32_t seed) {
   if (seed == LLAMA_DEFAULT_SEED) {
     seed = time(NULL);
