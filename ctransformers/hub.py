@@ -115,6 +115,7 @@ class AutoModelForCausalLM:
         lib: Optional[str] = None,
         local_files_only: bool = False,
         revision: Optional[str] = None,
+        hf: bool = False,
         **kwargs,
     ) -> LLM:
         """Loads the language model from a local file or remote repo.
@@ -130,6 +131,7 @@ class AutoModelForCausalLM:
             (i.e., do not try to download the model).
             revision: The specific model version to use. It can be a branch
             name, a tag name, or a commit id.
+            hf: Whether to create a Hugging Face Transformers model.
 
         Returns:
             `LLM` object.
@@ -170,12 +172,19 @@ class AutoModelForCausalLM:
                 revision=revision,
             )
 
-        return LLM(
+        llm = LLM(
             model_path=model_path,
             model_type=model_type,
             config=config.config,
             lib=lib,
         )
+        if not hf:
+            return llm
+
+        from .transformers import CTransformersConfig, CTransformersModel
+
+        config = CTransformersConfig(name_or_path=str(model_path_or_repo_id))
+        return CTransformersModel(config=config, llm=llm)
 
     @classmethod
     def _find_model_path_from_repo(
@@ -242,3 +251,18 @@ class AutoModelForCausalLM:
             raise ValueError(f"No model file found in directory '{path}'")
         file = min(files)[1]
         return str(file.resolve())
+
+
+class AutoTokenizer:
+    @classmethod
+    def from_pretrained(cls, model):
+        from .transformers import CTransformersModel, CTransformersTokenizer
+
+        if not isinstance(model, CTransformersModel):
+            raise TypeError(
+                f"Currently `AutoTokenizer.from_pretrained` only accepts a model object. Please use:\n\n"
+                "  model = AutoModelForCausalLM.from_pretrained(..., hf=True)\n"
+                "  tokenizer = AutoTokenizer.from_pretrained(model)"
+            )
+
+        return CTransformersTokenizer(model._llm)

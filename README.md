@@ -7,7 +7,7 @@ Python bindings for the Transformer models implemented in C/C++ using [GGML](htt
 - [Supported Models](#supported-models)
 - [Installation](#installation)
 - [Usage](#usage)
-  - [Hugging Face Hub](#hugging-face-hub)
+  - [🤗 Transformers](#transformers)
   - [LangChain](#langchain)
   - [GPU](#gpu)
   - [GPTQ](#gptq)
@@ -55,11 +55,7 @@ for text in llm("AI is going to", stream=True):
     print(text, end="", flush=True)
 ```
 
-It also provides access to the low-level C API. See [Documentation](#documentation) section below.
-
-### Hugging Face Hub
-
-It can be used with models hosted on the Hub:
+You can load models from Hugging Face Hub directly:
 
 ```py
 llm = AutoModelForCausalLM.from_pretrained("marella/gpt-2-ggml")
@@ -69,6 +65,48 @@ If a model repo has multiple model files (`.bin` or `.gguf` files), specify a mo
 
 ```py
 llm = AutoModelForCausalLM.from_pretrained("marella/gpt-2-ggml", model_file="ggml-model.bin")
+```
+
+<a id="transformers"></a>
+
+### 🤗 Transformers
+
+> **Note:** This is an experimental feature and may change in the future.
+
+To use it with 🤗 Transformers, create model and tokenizer using:
+
+```py
+from ctransformers import AutoModelForCausalLM, AutoTokenizer
+
+model = AutoModelForCausalLM.from_pretrained("marella/gpt-2-ggml", hf=True)
+tokenizer = AutoTokenizer.from_pretrained(model)
+```
+
+[Run in Google Colab](https://colab.research.google.com/drive/1FVSLfTJ2iBbQ1oU2Rqz0MkpJbaB_5Got)
+
+You can use 🤗 Transformers text generation pipeline:
+
+```py
+from transformers import pipeline
+
+pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
+print(pipe("AI is going to", max_new_tokens=256))
+```
+
+You can use 🤗 Transformers generation [parameters](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig):
+
+```py
+pipe("AI is going to", max_new_tokens=256, do_sample=True, temperature=0.8, repetition_penalty=1.1)
+```
+
+You can use 🤗 Transformers tokenizers:
+
+```py
+from ctransformers import AutoModelForCausalLM
+from transformers import AutoTokenizer
+
+model = AutoModelForCausalLM.from_pretrained("marella/gpt-2-ggml", hf=True)  # Load model from GGML model repo.
+tokenizer = AutoTokenizer.from_pretrained("gpt2")  # Load tokenizer from original model repo.
 ```
 
 ### LangChain
@@ -171,6 +209,7 @@ from_pretrained(
     lib: Optional[str] = None,
     local_files_only: bool = False,
     revision: Optional[str] = None,
+    hf: bool = False,
     **kwargs
 ) → LLM
 ```
@@ -186,6 +225,7 @@ Loads the language model from a local file or remote repo.
 - <b>`lib`</b>: The path to a shared library or one of `avx2`, `avx`, `basic`.
 - <b>`local_files_only`</b>: Whether or not to only look at local files (i.e., do not try to download the model).
 - <b>`revision`</b>: The specific model version to use. It can be a branch name, a tag name, or a commit id.
+- <b>`hf`</b>: Whether to create a Hugging Face Transformers model.
 
 **Returns:**
 `LLM` object.
@@ -259,6 +299,12 @@ The path to the model file.
 ##### <kbd>property</kbd> LLM.model_type
 
 The model type.
+
+---
+
+##### <kbd>property</kbd> LLM.pad_token_id
+
+The padding token.
 
 ---
 

@@ -279,6 +279,11 @@ class LLM:
         return self.ctransformers_llm_bos_token_id()
 
     @property
+    def pad_token_id(self) -> int:
+        """The padding token."""
+        return self.ctransformers_llm_eos_token_id()
+
+    @property
     def vocab_size(self) -> int:
         """The number of tokens in vocabulary."""
         return self.ctransformers_llm_vocab_size()
