@@ -26,6 +26,7 @@ from typing import (
 )
 
 from .lib import find_library, load_cuda
+from .logger import logger
 from .utils import is_gguf, Vector, utf8_split_incomplete
 
 c_int_p = POINTER(c_int)
@@ -172,6 +173,7 @@ def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
         llm_p,
         c_int_p,  # tokens
         c_int,  # n_tokens
+        c_int,  # n_past
         c_int,  # batch_size
         c_int,  # threads
     ]
@@ -189,11 +191,12 @@ def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
 
     lib.ctransformers_llm_sample.argtypes = [
         llm_p,
+        c_int_p,  # last_tokens
+        c_int,  # n_last
         c_int,  # top_k
         c_float,  # top_p
         c_float,  # temperature
         c_float,  # repetition_penalty
-        c_int,  # last_n_tokens
         c_int,  # seed
     ]
     lib.ctransformers_llm_sample.restype = c_int
@@ -226,6 +229,7 @@ class LLM:
         self._config = config
         self._llm = None
         self._lib = None
+        self._context = []
 
         if not Path(model_path).is_file():
             raise ValueError(f"Model path '{model_path}' doesn't exist.")
@@ -388,16 +392,23 @@ class LLM:
         batch_size = get(batch_size, config.batch_size)
         threads = get(threads, config.threads)
 
+        n_past = len(self._context)
         n_tokens = len(tokens)
+        if n_past + n_tokens > self.context_length:
+            logger.warning(
+                f"Number of tokens ({n_past + n_tokens}) exceeded maximum context length ({self.context_length})."
+            )
         tokens = (c_int * n_tokens)(*tokens)
         status = self.ctransformers_llm_batch_eval(
             tokens,
             n_tokens,
+            n_past,
             batch_size,
             threads,
         )
         if not status:
             raise RuntimeError("Failed to evaluate tokens.")
+        self._context.extend(tokens)
 
     @doc
     def sample(
@@ -426,17 +437,25 @@ class LLM:
         last_n_tokens = get(last_n_tokens, config.last_n_tokens)
         seed = get(seed, config.seed)
 
+        if last_n_tokens < 0:
+            last_n_tokens = self.context_length
+        last_tokens = self._context[-last_n_tokens:]
+        n_last = len(last_tokens)
+        last_tokens = (c_int * n_last)(*last_tokens)
+
         return self.ctransformers_llm_sample(
+            last_tokens,
+            n_last,
             top_k,
             top_p,
             temperature,
             repetition_penalty,
-            last_n_tokens,
             seed,
         )
 
     def reset(self) -> None:
         """Resets the model state."""
+        self._context.clear()
         self.ctransformers_llm_reset()
 
     def __del__(self):

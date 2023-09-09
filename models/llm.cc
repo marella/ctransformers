@@ -105,10 +105,10 @@ const char* ctransformers_llm_architecture(LLM* llm) {
 }
 
 bool ctransformers_llm_batch_eval(LLM* llm, const int* tokens,
-                                  const int n_tokens, const int batch_size,
-                                  const int threads) {
+                                  const int n_tokens, const int n_past,
+                                  const int batch_size, const int threads) {
   return llm->BatchEval(std::vector<gpt_vocab::id>(tokens, tokens + n_tokens),
-                        batch_size, threads);
+                        n_past, batch_size, threads);
 }
 
 float* ctransformers_llm_logits_data(LLM* llm) { return llm->Logits().data(); }
@@ -123,12 +123,12 @@ int ctransformers_llm_embeddings_size(LLM* llm) {
   return llm->Embeddings().size();
 }
 
-int ctransformers_llm_sample(LLM* llm, const int top_k, const float top_p,
+int ctransformers_llm_sample(LLM* llm, const int* last_tokens, const int n_last,
+                             const int top_k, const float top_p,
                              const float temperature,
-                             const float repetition_penalty,
-                             const int last_n_tokens, const int seed) {
-  return llm->Sample(top_k, top_p, temperature, repetition_penalty,
-                     last_n_tokens, seed);
+                             const float repetition_penalty, const int seed) {
+  return llm->Sample(last_tokens, n_last, top_k, top_p, temperature,
+                     repetition_penalty, seed);
 }
 
 void ctransformers_llm_reset(LLM* llm) { llm->Reset(); }

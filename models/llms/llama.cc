@@ -50,12 +50,10 @@ class llama_llm : public LLM {
     return ctx_->embedding;
   }
 
-  gpt_vocab::id Sample(const int top_k, const float top_p,
+  gpt_vocab::id Sample(const int *last_tokens, const int n_last,
+                       const int top_k, const float top_p,
                        const float temperature, const float repetition_penalty,
-                       int last_n_tokens, int seed) const override {
-    if (last_n_tokens < 0) {
-      last_n_tokens = ContextLength();
-    }
+                       int seed) const override {
     if (seed < 0) {
       seed = time(nullptr);
     }
@@ -77,17 +75,8 @@ class llama_llm : public LLM {
         false,
     };
 
-    {
-      std::unordered_set<gpt_vocab::id> recent_tokens_set;
-      if (repetition_penalty != 1.0f) {
-        recent_tokens_set = previous_tokens_.GetRecent(last_n_tokens);
-      }
-      std::vector<gpt_vocab::id> recent_tokens(recent_tokens_set.begin(),
-                                               recent_tokens_set.end());
-      llama_sample_repetition_penalty(ctx_, &candidates_p, recent_tokens.data(),
-                                      recent_tokens.size(), repetition_penalty);
-    }
-
+    llama_sample_repetition_penalty(ctx_, &candidates_p, last_tokens, n_last,
+                                    repetition_penalty);
     llama_sample_top_k(ctx_, &candidates_p, top_k, 1);
     llama_sample_top_p(ctx_, &candidates_p, top_p, 1);
     llama_sample_temperature(ctx_, &candidates_p, temperature);
