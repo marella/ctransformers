@@ -431,13 +431,34 @@ Checks if a token is an end-of-sequence token.
 
 ---
 
+#### <kbd>method</kbd> `LLM.prepare_inputs_for_generation`
+
+```python
+prepare_inputs_for_generation(
+    tokens: Sequence[int],
+    reset: Optional[bool] = None
+) → Sequence[int]
+```
+
+Removes input tokens that are evaluated in the past and updates the LLM context.
+
+**Args:**
+
+- <b>`tokens`</b>: The list of input tokens.
+- <b>`reset`</b>: Whether to reset the model state before generating text. Default: `True`
+
+**Returns:**
+The list of tokens to evaluate.
+
+---
+
 #### <kbd>method</kbd> `LLM.reset`
 
 ```python
 reset() → None
 ```
 
-Resets the model state.
+Deprecated since 0.2.27.
 
 ---
 

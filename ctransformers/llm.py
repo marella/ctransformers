@@ -1,6 +1,7 @@
 import inspect
 import os
 import re
+import warnings
 from collections import OrderedDict
 from dataclasses import dataclass
 from functools import partial
@@ -454,13 +455,49 @@ class LLM:
         )
 
     def reset(self) -> None:
-        """Resets the model state."""
+        """Deprecated since 0.2.27."""
+        warnings.warn(
+            "`LLM.reset()` method is deprecated since 0.2.27. Please use high-level API."
+        )
         self._context.clear()
         self.ctransformers_llm_reset()
 
     def __del__(self):
         if self._llm is not None:
             self.ctransformers_llm_delete()
+
+    @doc
+    def prepare_inputs_for_generation(
+        self,
+        tokens: Sequence[int],
+        *,
+        reset: Optional[bool] = None,
+    ) -> Sequence[int]:
+        """Removes input tokens that are evaluated in the past and updates the LLM context.
+
+        Args:
+            tokens: The list of input tokens.
+            {params}
+
+        Returns:
+            The list of tokens to evaluate.
+        """
+        config = self.config
+        reset = get(reset, config.reset)
+
+        if not reset:
+            return tokens
+
+        # Keep at least one input token to evaluate the logits.
+        n = min(len(tokens) - 1, len(self._context))
+        l = 0
+        while l < n and tokens[l] == self._context[l]:
+            l += 1
+        # Remove input tokens that are evaluated in the past and update context.
+        tokens = tokens[l:]
+        self._context = self._context[:l]
+
+        return tokens
 
     @doc
     def generate(
@@ -486,12 +523,7 @@ class LLM:
         Returns:
             The generated tokens.
         """
-        config = self.config
-        reset = get(reset, config.reset)
-
-        if reset:
-            self.reset()
-
+        tokens = self.prepare_inputs_for_generation(tokens, reset=reset)
         self.eval(tokens, batch_size=batch_size, threads=threads)
         while True:
             token = self.sample(
@@ -652,6 +684,6 @@ class LLM:
         """
         if isinstance(input, str):
             input = self.tokenize(input)
-        self.reset()
+        input = self.prepare_inputs_for_generation(input, reset=True)
         self.eval(input, batch_size=batch_size, threads=threads)
         return list(self.embeddings)

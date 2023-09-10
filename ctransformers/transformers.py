@@ -46,7 +46,6 @@ class CTransformersModel(PreTrainedModel):
                 setattr(config, name, value)
         super().__init__(config)
         self._llm = llm
-        self._past = []
         MODEL_FOR_CAUSAL_LM_MAPPING.register("ctransformers", CTransformersModel)
 
     @property
@@ -71,13 +70,7 @@ class CTransformersModel(PreTrainedModel):
         assert batch_size == 1, f"Batch size must be 1 but is {batch_size}."
         llm = self._llm
         tokens = input_ids.flatten().tolist()
-        n_past = len(self._past)
-        if tokens[:n_past] == self._past:
-            self._past = tokens
-            tokens = tokens[n_past:]
-        else:
-            self._past = tokens
-            llm.reset()
+        tokens = llm.prepare_inputs_for_generation(tokens)
         llm.eval(tokens)
         logits = torch.tensor(llm.logits).reshape([1, 1, -1])
         if not return_dict:
