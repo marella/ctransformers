@@ -74,7 +74,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES
     endif()
 else()
     message(STATUS "x86 detected")
-    if (APPLE)
+    if (APPLE AND CT_INSTRUCTIONS STREQUAL "basic")
         # Universal binary.
         set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
     endif()
