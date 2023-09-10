@@ -66,13 +66,14 @@ class CTransformersModel(PreTrainedModel):
         return_dict: Optional[bool] = None,
         **kwargs,
     ) -> Union[Tuple, CausalLMOutput]:
-        batch_size = input_ids.shape[0]
-        assert batch_size == 1, f"Batch size must be 1 but is {batch_size}."
         llm = self._llm
-        tokens = input_ids.flatten().tolist()
-        tokens = llm.prepare_inputs_for_generation(tokens)
-        llm.eval(tokens)
-        logits = torch.tensor(llm.logits).reshape([1, 1, -1])
+        logits = []
+        for tokens in input_ids:
+            tokens = tokens.tolist()
+            tokens = llm.prepare_inputs_for_generation(tokens)
+            llm.eval(tokens)
+            logits.append(torch.tensor(llm.logits).reshape([1, -1]))
+        logits = torch.stack(logits)
         if not return_dict:
             return (logits,)
         return CausalLMOutput(logits=logits)
