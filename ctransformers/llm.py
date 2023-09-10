@@ -114,13 +114,13 @@ def get(*values):
             return value
 
 
-def load_library(path: Optional[str] = None, cuda: bool = False) -> Any:
+def load_library(path: Optional[str] = None, gpu: bool = False) -> Any:
     # https://docs.python.org/3.8/whatsnew/3.8.html#bpo-36085-whatsnew
     # https://github.com/abetlen/llama-cpp-python/pull/225
     if hasattr(os, "add_dll_directory") and "CUDA_PATH" in os.environ:
         os.add_dll_directory(os.path.join(os.environ["CUDA_PATH"], "bin"))
 
-    path = find_library(path, cuda=cuda)
+    path = find_library(path, gpu=gpu)
     if "cuda" in path:
         load_cuda()
     lib = CDLL(path)
@@ -243,7 +243,7 @@ class LLM:
                 )
             model_type = "gguf"
 
-        self._lib = load_library(lib, cuda=config.gpu_layers > 0)
+        self._lib = load_library(lib, gpu=config.gpu_layers > 0)
         self._llm = self._lib.ctransformers_llm_create(
             model_path.encode(),
             model_type.encode(),

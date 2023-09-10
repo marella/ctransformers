@@ -6,7 +6,7 @@ from pathlib import Path
 from .logger import logger
 
 
-def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
+def find_library(path: Optional[str] = None, gpu: bool = False) -> str:
     lib_directory = Path(__file__).parent.resolve() / "lib"
 
     if path:
@@ -15,11 +15,15 @@ def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
             return path
 
     system = platform.system()
+    metal = gpu and system == "Darwin"
+    cuda = gpu and not metal
     if not path:
         if (lib_directory / "local").is_dir():
             path = "local"
         elif cuda:
             path = "cuda"
+        elif metal:
+            path = "metal"
         elif platform.processor() == "arm":
             # Apple silicon doesn't support AVX/AVX2.
             path = "basic" if system == "Darwin" else ""
@@ -54,11 +58,17 @@ def find_library(path: Optional[str] = None, cuda: bool = False) -> str:
 
     path = lib_directory / path / name
     if not path.is_file():
+        if cuda:
+            env = "CT_CUBLAS=1 "
+        elif metal:
+            env = "CT_METAL=1 "
+        else:
+            env = ""
         raise OSError(
             "Precompiled binaries are not available for the current platform. "
             "Please reinstall from source using:\n\n"
             "  pip uninstall ctransformers --yes\n"
-            f"  {'CT_CUBLAS=1 ' if cuda else ''}pip install ctransformers --no-binary ctransformers\n\n"
+            f"  {env}pip install ctransformers --no-binary ctransformers\n\n"
         )
     return str(path)
 
