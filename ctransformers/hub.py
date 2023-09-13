@@ -114,6 +114,7 @@ class AutoModelForCausalLM:
         config: Optional[AutoConfig] = None,
         lib: Optional[str] = None,
         local_files_only: bool = False,
+        cache_dir: Optional[str] = None,
         revision: Optional[str] = None,
         hf: bool = False,
         **kwargs,
@@ -131,6 +132,7 @@ class AutoModelForCausalLM:
             (i.e., do not try to download the model).
             revision: The specific model version to use. It can be a branch
             name, a tag name, or a commit id.
+            cache_dir: Cache directory for model, defaults to /.cache
             hf: Whether to create a Hugging Face Transformers model.
 
         Returns:
@@ -169,6 +171,7 @@ class AutoModelForCausalLM:
                 model_path_or_repo_id,
                 model_file,
                 local_files_only=local_files_only,
+                cache_dir = cache_dir,
                 revision=revision,
             )
 
@@ -192,6 +195,7 @@ class AutoModelForCausalLM:
         repo_id: str,
         filename: Optional[str],
         local_files_only: bool,
+        cache_dir: Optional[str] = None,
         revision: Optional[str] = None,
     ) -> str:
         if not filename and not local_files_only:
@@ -204,6 +208,7 @@ class AutoModelForCausalLM:
             repo_id=repo_id,
             allow_patterns=allow_patterns,
             local_files_only=local_files_only,
+            cache_dir=cache_dir,
             revision=revision,
         )
         return cls._find_model_path_from_dir(path, filename=filename)
