@@ -186,7 +186,6 @@ if (CT_HIPBLAS)
         target_link_libraries(ctransformers PRIVATE hip::device hip::host roc::rocblas roc::hipblas)
 
         target_compile_definitions(ctransformers PRIVATE GGML_USE_HIPBLAS)
-        target_compile_definitions(ctransformers PRIVATE GGML_USE_CUBLAS)
         target_compile_definitions(ctransformers PRIVATE GGML_CUDA_MMQ_Y=${CT_CUDA_MMQ_Y})
         target_compile_definitions(ctransformers PRIVATE GGML_CUDA_DMMV_X=${CT_CUDA_DMMV_X})
         target_compile_definitions(ctransformers PRIVATE GGML_CUDA_MMV_Y=${CT_CUDA_MMV_Y})
