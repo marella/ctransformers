@@ -1,3 +1,7 @@
+#ifdef GGML_USE_HIPBLAS
+#define cudaDeviceProp hipDeviceProp_t
+#endif
+
 // https://github.com/cmp-nct/ggllm.cpp/blob/master/ggml-cuda.h
 
 typedef struct {
