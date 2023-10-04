@@ -81,8 +81,8 @@ class CTransformersModel(PreTrainedModel):
 
 class CTransformersTokenizer(PreTrainedTokenizer):
     def __init__(self, llm: LLM, **kwargs):
-        super().__init__(**kwargs)
         self._llm = llm
+        super().__init__(**kwargs)
 
     @property
     def vocab_size(self) -> int:
