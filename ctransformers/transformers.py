@@ -158,3 +158,10 @@ class CTransformersTokenizer(PreTrainedTokenizer):
 
     def convert_tokens_to_string(self, tokens: List[str]) -> str:
         return "".join(tokens)
+
+    # Copied from transformers.models.llama.tokenization_llama.LlamaTokenizer.get_vocab
+    def get_vocab(self):
+        """Returns vocab as a dict"""
+        vocab = {self.convert_ids_to_tokens(i): i for i in range(self.vocab_size)}
+        vocab.update(self.added_tokens_encoder)
+        return vocab
