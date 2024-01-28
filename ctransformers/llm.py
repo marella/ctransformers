@@ -562,6 +562,7 @@ class LLM:
             stop = [stop]
 
         tokens = self.tokenize(prompt)
+        max_new_tokens = min(max_new_tokens, self.context_length - len(tokens)
 
         stop_regex = re.compile("|".join(map(re.escape, stop)))
         count = 0
